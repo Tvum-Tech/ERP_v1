@@ -100,7 +100,7 @@ class LightingConfigurationListAPI(ModelViewSet):
     @action(detail=False, methods=["post"], url_path="save_batch")
     def save_batch(self, request):
         data = request.data
-
+        print(data)
         area_id = data.get("area_id")
         project_id = data.get("project_id")
         products = data.get("products", [])

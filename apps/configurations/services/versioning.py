@@ -55,6 +55,7 @@ def mark_previous_versions_inactive(project_id, area_id, new_version):
 
 @transaction.atomic
 def create_configuration_version(project_id, area_id, products_data, drivers_data, accessories_data):
+    print("products_data",products_data)
     """
     Create a new IMMUTABLE configuration version.
 
@@ -129,12 +130,14 @@ def create_configuration_version(project_id, area_id, products_data, drivers_dat
         # -------------------------------
         # DRIVER LINK (per product)
         # -------------------------------
-        driver_id = prod_data.get("driver_id")
-        if driver_id:
-            ConfigurationDriver.objects.create(
-                configuration=config,
-                driver_id=driver_id,
-                quantity=prod_data.get("quantity", 1),
+        drivers_data = prod_data.get("drivers",[])
+        for driver in drivers_data:
+            driver_id = driver.get("driver_id")
+            if driver_id:
+                ConfigurationDriver.objects.create(
+                    configuration=config,
+                    driver_id=driver_id,
+                    quantity=driver.get("quantity", 1),
             )
 
         # -------------------------------
