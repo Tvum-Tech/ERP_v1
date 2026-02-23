@@ -145,111 +145,83 @@ class BOQPDFBuilder:
 
 @transaction.atomic
 def generate_boq(project, user):
-    """
-    ERP-grade BOQ generation.
-
-    Rules:
-    - BOQ generated only from active configuration
-    - One BOQ per configuration version
-    - Supports project-level and area-wise configs
-    - Append-only versioning
-    """
 
     # -----------------------------
-    # 1. LOAD PROJECT SAFELY
+    # 1. Load Project
     # -----------------------------
-    project_id = None
-
-    if hasattr(project, "id"):
-        project_id = project.id
-    elif isinstance(project, dict):
-        project_id = project.get("id")
-    else:
-        project_id = project
-
-    if not project_id:
-        raise ValidationError("Invalid project reference")
-
-    try:
-        project = Project.objects.get(id=project_id)
-    except Project.DoesNotExist:
-        raise ValidationError("Project not found")
+    if not isinstance(project, Project):
+        project = Project.objects.get(id=project)
 
     # -----------------------------
-    # 2. LOAD ACTIVE CONFIGURATIONS
+    # 2. Load Active Configurations
     # -----------------------------
     active_configs = LightingConfiguration.objects.filter(
         project=project,
         is_active=True
-    ).select_related("area", "product")
+    ).select_related("area", "subarea", "product")
 
     if not active_configs.exists():
-        raise ValidationError(
-            "No active configurations found. "
-            "Please save configuration first."
-        )
-
-    # All configs must share same version
-    config_version = active_configs.first().configuration_version
+        raise ValidationError("No active configurations found.")
 
     # -----------------------------
-    # 3. PREVENT DUPLICATE BOQ
+    # 3. Detect Latest Configuration Change
     # -----------------------------
+    latest_config_update = active_configs.aggregate(
+        last_update=Max("updated_at")
+    )["last_update"]
+
     latest_boq = BOQ.objects.filter(project=project).order_by("-version").first()
 
-    if latest_boq and latest_boq.source_configuration_version == config_version:
-        raise ValidationError(
-            "BOQ already generated for the current configuration version."
-        )
+    if latest_boq and latest_boq.created_at >= latest_config_update:
+        raise ValidationError("BOQ already generated for current configuration.")
 
     # -----------------------------
-    # 4. DETERMINE NEXT BOQ VERSION
+    # 4. Determine Next Version
     # -----------------------------
-    latest_version = (
-        BOQ.objects.filter(project=project)
-        .aggregate(max_v=Max("version"))
-        .get("max_v") or 0
-    )
+    latest_version = BOQ.objects.filter(project=project).aggregate(
+        max_v=Max("version")
+    )["max_v"] or 0
 
-    next_boq_version = latest_version + 1
+    next_version = latest_version + 1
 
     # -----------------------------
-    # 5. CREATE BOQ HEADER
+    # 5. Create BOQ Header
     # -----------------------------
     boq = BOQ.objects.create(
-    project=project,
-    version=next_boq_version,
-    created_by=user,
-    status="DRAFT",
-    source_configuration_version=config_version,
+        project=project,
+        version=next_version,
+        created_by=user,
+        status="DRAFT",
+        source_configuration_version=next_version  # snapshot marker
     )
 
     # -----------------------------
-    # 6. CREATE BOQ ITEMS
+    # 6. Create BOQ Items
     # -----------------------------
-    seen_products = set()
+    seen_keys = set()
 
     for config in active_configs:
 
         area = config.area
+        subarea = config.subarea
         product = config.product
 
-        # Prevent duplicates
-        area_key = area.id if area else "PROJECT"
-        key = (area_key, product.prod_id)
+        key = (
+            area.id if area else None,
+            subarea.id if subarea else None,
+            product.pk
+        )
 
-        if key in seen_products:
+        if key in seen_keys:
             continue
 
-        seen_products.add(key)
+        seen_keys.add(key)
 
-        # -------------------------
-        # PRODUCT ITEM
-        # -------------------------
-        product_price = getattr(product, "base_price", 0)
+        product_price = product.base_price or 0
         product_total = product_price * config.quantity
 
-        product_item = BOQItem.objects.create(
+        # PRODUCT
+        BOQItem.objects.create(
             boq=boq,
             area=area,
             item_type="PRODUCT",
@@ -260,54 +232,37 @@ def generate_boq(project, user):
             final_price=product_total,
         )
 
-        # -------------------------
-        # DRIVER ITEMS
-        # -------------------------
+        # DRIVERS
         drivers = ConfigurationDriver.objects.filter(configuration=config)
-
         for drv in drivers:
-            driver = drv.driver
-            driver_price = getattr(driver, "base_price", 0)
-            driver_total = driver_price * drv.quantity
-
+            driver_price = drv.driver.base_price or 0
             BOQItem.objects.create(
                 boq=boq,
                 area=area,
                 item_type="DRIVER",
-                driver=driver,
+                driver=drv.driver,
                 quantity=drv.quantity,
                 unit_price=driver_price,
                 markup_pct=0,
-                final_price=driver_total,
+                final_price=driver_price * drv.quantity,
             )
 
-        # -------------------------
-        # ACCESSORY ITEMS
-        # -------------------------
+        # ACCESSORIES
         accessories = ConfigurationAccessory.objects.filter(configuration=config)
-
         for acc in accessories:
-            accessory = acc.accessory
-            acc_price = getattr(accessory, "base_price", 0)
-            acc_total = acc_price * acc.quantity
-
+            acc_price = acc.accessory.base_price or 0
             BOQItem.objects.create(
                 boq=boq,
                 area=area,
                 item_type="ACCESSORY",
-                accessory=accessory,
+                accessory=acc.accessory,
                 quantity=acc.quantity,
                 unit_price=acc_price,
                 markup_pct=0,
-                final_price=acc_total,
+                final_price=acc_price * acc.quantity,
             )
 
-    # -----------------------------
-    # 7. RETURN RESULT
-    # -----------------------------
     return boq
-
-
 def get_boq_summary(boq):
     if not boq:
         return None

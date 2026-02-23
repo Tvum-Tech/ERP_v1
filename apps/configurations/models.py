@@ -63,9 +63,10 @@ class LightingConfiguration(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
-        # Ensure (project, area, configuration_version, product) is unique
-        unique_together = [('project', 'area', 'configuration_version', 'product')]
-        # Index for efficient querying of active versions
+        # Ensure (project, area, subarea, configuration_version, product) is unique
+        unique_together = [
+    ('project', 'area', 'subarea', 'configuration_version', 'product')
+]        # Index for efficient querying of active versions
         indexes = [
             models.Index(fields=['project', 'area', 'is_active']),
             models.Index(fields=['project', 'area', 'configuration_version']),

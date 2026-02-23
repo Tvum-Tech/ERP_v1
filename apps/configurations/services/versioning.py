@@ -54,7 +54,7 @@ def mark_previous_versions_inactive(project_id, area_id, new_version):
 
 
 @transaction.atomic
-def create_configuration_version(project_id, area_id, products_data, drivers_data, accessories_data):
+def create_configuration_version(project_id, area_id,subarea_id,products_data, drivers_data, accessories_data):
     print("products_data",products_data)
     """
     Create a new IMMUTABLE configuration version.
@@ -120,6 +120,8 @@ def create_configuration_version(project_id, area_id, products_data, drivers_dat
         config = LightingConfiguration.objects.create(
             project_id=project_id,
             area_id=area_id,
+                subarea_id=subarea_id,
+
             configuration_version=next_version,
             is_active=True,
             product_id=prod_data["product_id"],

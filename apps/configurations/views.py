@@ -1,3 +1,4 @@
+
 from rest_framework import viewsets, status
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.decorators import action
@@ -10,6 +11,7 @@ from apps.configurations.models import (
     ConfigurationDriver,
     ConfigurationAccessory,
 )
+
 from apps.configurations.serializers import LightingConfigurationSerializer, ConfigurationAccessorySerializer,ConfigurationDriverSerializer
 from apps.configurations.services.versioning import create_configuration_version
 from apps.projects.models import Project, Area
@@ -17,16 +19,17 @@ from apps.masters.models import Product
 from apps.common.permissions import IsEditorOrReadOnly
 from rest_framework.filters import SearchFilter
 from django_filters.rest_framework import DjangoFilterBackend
-
+from .models import SubArea
 
 class LightingConfigurationListAPI(ModelViewSet):
     queryset = LightingConfiguration.objects.all()
     serializer_class = LightingConfigurationSerializer
 
     def get_queryset(self):
+        
         project_id = self.request.query_params.get("project_id")
         show_all = self.request.query_params.get("show_all")
-
+        print(f"project_id: {project_id}")
         qs = LightingConfiguration.objects.all()
 
         if project_id:
@@ -98,11 +101,15 @@ class LightingConfigurationListAPI(ModelViewSet):
         return Response(status=204)
     
     @action(detail=False, methods=["post"], url_path="save_batch")
+
+
     def save_batch(self, request):
         data = request.data
-        print(data)
+
         area_id = data.get("area_id")
+        subarea_id = data.get("subarea_id")
         project_id = data.get("project_id")
+
         products = data.get("products", [])
         drivers = data.get("drivers", [])
         accessories = data.get("accessories", [])
@@ -118,11 +125,26 @@ class LightingConfigurationListAPI(ModelViewSet):
 
         project = None
         area = None
+        subarea = None
 
         # -------------------------------
-        # CASE 1: AREA PROVIDED
+        # PRIORITY 1: SUBAREA PROVIDED
         # -------------------------------
-        if area_id:
+        if subarea_id:
+            try:
+                subarea = SubArea.objects.select_related("area__project").get(id=subarea_id)
+                area = subarea.area
+                project = area.project
+            except SubArea.DoesNotExist:
+                return Response(
+                    {"error": "Subarea not found"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+        # -------------------------------
+        # PRIORITY 2: AREA PROVIDED
+        # -------------------------------
+        elif area_id:
             try:
                 area = Area.objects.select_related("project").get(id=area_id)
                 project = area.project
@@ -133,7 +155,7 @@ class LightingConfigurationListAPI(ModelViewSet):
                 )
 
         # -------------------------------
-        # CASE 2: PROJECT-LEVEL CONFIG
+        # PRIORITY 3: PROJECT-LEVEL CONFIG
         # -------------------------------
         elif project_id:
             try:
@@ -145,33 +167,40 @@ class LightingConfigurationListAPI(ModelViewSet):
                 )
         else:
             return Response(
-                {"error": "Either area_id or project_id is required"},
+                {"error": "project_id or area_id or subarea_id is required"},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
         # -------------------------------
         # ERP RULE ENFORCEMENT
         # -------------------------------
-        if project.inquiry_type == "AREA_WISE" and not area_id:
+        if project.inquiry_type == "AREA_WISE" and not area:
             return Response(
                 {"error": "Area is required for area-wise projects"},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+        # Optional stricter rule:
+        # If you want subarea mandatory for AREA_WISE:
+        # if project.inquiry_type == "AREA_WISE" and not subarea:
+        #     return Response({"error": "Subarea is required"}, status=400)
 
         # -------------------------------
         # CREATE CONFIGURATION VERSION
         # -------------------------------
         try:
             with transaction.atomic():
-                result = create_configuration_version(
-                project_id=project.id,
-                area_id=area.id if area else None,
-                products_data=products,
-                drivers_data=drivers,
-                accessories_data=accessories,
-            )
 
-            return Response(result, status=status.HTTP_201_CREATED)
+                result = create_configuration_version(
+                    project_id=project.id,
+                    area_id=area.id if area else None,
+                    subarea_id=subarea.id if subarea else None,
+                    products_data=products,
+                    drivers_data=drivers,
+                    accessories_data=accessories,
+                )
+
+                return Response(result, status=status.HTTP_201_CREATED)
 
         except Exception as e:
             return Response(
@@ -181,7 +210,6 @@ class LightingConfigurationListAPI(ModelViewSet):
                 },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-
     @action(
         detail=False,
         methods=["post"],

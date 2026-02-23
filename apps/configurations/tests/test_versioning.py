@@ -165,6 +165,7 @@ class ConfigurationVersioningTestCase(TestCase):
             LightingConfiguration.objects.create(
                 project=self.project,
                 area=self.area1,
+                subarea=None,
                 product=self.product1,
                 quantity=5,
                 configuration_version=1
