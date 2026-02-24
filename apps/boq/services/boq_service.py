@@ -5,7 +5,7 @@ from decimal import Decimal
 from datetime import date
 from django.utils import timezone
 from django.db import transaction
-from django.db.models import Sum
+from django.db.models import Sum, Prefetch
 from django.http import HttpResponse
 from django.core.exceptions import ValidationError
 from django.db.models import Max
@@ -182,10 +182,27 @@ class BOQPDFBuilder:
                 "Total"
             ]]
 
-            area_total = Decimal(0)
-            items = self.boq.items.filter(area_id=area_id)
+            items = list(self.boq.items.filter(area_id=area_id).select_related("product", "driver", "accessory"))
+            area_total = sum((Decimal(it.final_price or 0) for it in items), Decimal("0"))
+            grand_total += area_total
+            product_items = [it for it in items if it.item_type == "PRODUCT" and it.product_id]
 
-            for item in items:
+            product_config_map = {}
+            if self.boq.source_configuration_version:
+                area_configs = LightingConfiguration.objects.filter(
+                    project=self.boq.project,
+                    area_id=area_id,
+                    configuration_version=self.boq.source_configuration_version,
+                ).prefetch_related(
+                    Prefetch("configuration_drivers", queryset=ConfigurationDriver.objects.select_related("driver")),
+                    Prefetch("accessories", queryset=ConfigurationAccessory.objects.select_related("accessory")),
+                )
+                product_config_map = {cfg.product_id: cfg for cfg in area_configs}
+
+            rendered_driver_ids = set()
+            rendered_accessory_ids = set()
+
+            for item in product_items:
 
                 qty = Decimal(item.quantity or 0)
                 line_total = Decimal(item.final_price or 0)
@@ -199,8 +216,6 @@ class BOQPDFBuilder:
                 base_price = total_unit / Decimal("1.18")
                 gst = total_unit - base_price
 
-                area_total += line_total
-                grand_total += line_total
 
                 img = ""
                 item_code = "-"
@@ -239,38 +254,72 @@ class BOQPDFBuilder:
                         self._format_currency(line_total)
                     ])
 
-                # DRIVER
-                elif item.item_type == "DRIVER" and item.driver:
+                    linked_cfg = product_config_map.get(item.product_id)
+                    if linked_cfg:
+                        for drv_link in linked_cfg.configuration_drivers.all():
+                            driver = drv_link.driver
+                            desc = f"{driver.driver_make} {driver.driver_code}"
+                            line_total_drv = Decimal(drv_link.quantity) * Decimal(driver.base_price or 0)
+                            gst_drv = line_total_drv * Decimal("0.18")
+                            table_data.append([
+                                "",
+                                Paragraph("→ Driver", self.style_normal),
+                                "-",
+                                Paragraph(desc, self.style_normal),
+                                str(drv_link.quantity),
+                                "Nos",
+                                self._format_currency(driver.base_price or 0),
+                                self._format_currency(gst_drv),
+                                self._format_currency(line_total_drv + gst_drv)
+                            ])
+                            rendered_driver_ids.add(driver.id)
+
+                        for acc_link in linked_cfg.accessories.all():
+                            acc = acc_link.accessory
+                            line_total_acc = Decimal(acc_link.quantity) * Decimal(acc.base_price or 0)
+                            gst_acc = line_total_acc * Decimal("0.18")
+                            table_data.append([
+                                "",
+                                Paragraph("→ Accessory", self.style_normal),
+                                "-",
+                                Paragraph(acc.accessory_name, self.style_normal),
+                                str(acc_link.quantity),
+                                "Nos",
+                                self._format_currency(acc.base_price or 0),
+                                self._format_currency(gst_acc),
+                                self._format_currency(line_total_acc + gst_acc)
+                            ])
+                            rendered_accessory_ids.add(acc.id)
+
+            # fallback: render any standalone items not captured through linked config
+            for item in items:
+                if item.item_type == "DRIVER" and item.driver and item.driver_id not in rendered_driver_ids:
                     driver = item.driver
                     desc = f"{driver.driver_make} {driver.driver_code}"
-
                     table_data.append([
                         "",
                         Paragraph("→ Driver", self.style_normal),
                         "-",
                         Paragraph(desc, self.style_normal),
-                        str(qty),
+                        str(item.quantity),
                         "Nos",
-                        self._format_currency(base_price),
-                        self._format_currency(gst),
-                        self._format_currency(line_total)
+                        self._format_currency(item.unit_price),
+                        self._format_currency(Decimal(item.final_price or 0) * Decimal("0.18")),
+                        self._format_currency(item.final_price)
                     ])
 
-                # ACCESSORY
-                elif item.item_type == "ACCESSORY" and item.accessory:
+                if item.item_type == "ACCESSORY" and item.accessory and item.accessory_id not in rendered_accessory_ids:
                     acc = item.accessory
-                    desc = acc.accessory_name
-
                     table_data.append([
                         "",
                         Paragraph("→ Accessory", self.style_normal),
                         "-",
-                        Paragraph(desc, self.style_normal),
-                        str(qty),
+                        Paragraph(acc.accessory_name, self.style_normal),
+                        str(item.quantity),
                         "Nos",
-                        self._format_currency(base_price),
-                        self._format_currency(gst),
-                        self._format_currency(line_total)
+                        self._format_currency(item.unit_price),
+                        self._format_currency(Decimal(item.final_price or 0) * Decimal("0.18")),
+                        self._format_currency(item.final_price)
                     ])
 
             # Area subtotal
@@ -615,8 +664,6 @@ class BOQExcelBuilder:
                 unit_price = Decimal(item.unit_price or 0)
                 margin = Decimal(item.markup_pct or 0)
                 line_total = Decimal(item.final_price or 0)
-                area_total += line_total
-                grand_total += line_total
                 desc = "-"
                 if item.item_type == "PRODUCT" and item.product: desc = item.product.make
                 elif item.item_type == "DRIVER" and item.driver: desc = item.driver.driver_type

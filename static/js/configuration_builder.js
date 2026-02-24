@@ -659,6 +659,9 @@ const ConfigurationBuilder = {
             this.state.compatibleDrivers = Array.isArray(response.drivers) ? response.drivers : [];
             this.state.compatibleAccessories = Array.isArray(response.accessories) ? response.accessories : [];
 
+            // IMPORTANT: when products change, remove any now-incompatible selections
+            this.pruneIncompatibleSelections();
+
             console.log(`[ConfigBuilder] Found ${this.state.compatibleDrivers.length} drivers, ${this.state.compatibleAccessories.length} accessories`);
 
             this.renderCompatibility();
@@ -683,6 +686,30 @@ const ConfigurationBuilder = {
             this.dom.driverCount.textContent = '0';
             this.dom.accessoryCount.textContent = '0';
         }
+    },
+
+
+    pruneIncompatibleSelections() {
+        const validDriverIds = new Set((this.state.compatibleDrivers || []).map(d => d.id));
+        const validAccessoryIds = new Set((this.state.compatibleAccessories || []).map(a => a.id));
+
+        if (this.state.selectedDrivers && typeof this.state.selectedDrivers === 'object') {
+            Object.keys(this.state.selectedDrivers).forEach((id) => {
+                if (!validDriverIds.has(parseInt(id, 10))) {
+                    delete this.state.selectedDrivers[id];
+                }
+            });
+        }
+
+        if (this.state.selectedAccessories && typeof this.state.selectedAccessories === 'object') {
+            Object.keys(this.state.selectedAccessories).forEach((id) => {
+                if (!validAccessoryIds.has(parseInt(id, 10))) {
+                    delete this.state.selectedAccessories[id];
+                }
+            });
+        }
+
+        this.updateTotals();
     },
 
     renderCompatibility() {
@@ -973,9 +1000,17 @@ const ConfigurationBuilder = {
                 }))
             : [];
 
+        // Link selected compatible drivers/accessories to each selected product.
+        // This keeps product->driver/accessory relationships explicit for BOQ/PDF.
+        const productsWithLinks = products.map((product) => ({
+            ...product,
+            drivers: drivers,
+            accessories: accessories,
+        }));
+
         const payload = {
             area_id: this.state.areaId,
-            products: products,
+            products: productsWithLinks,
             drivers: drivers,
             accessories: accessories
         };
