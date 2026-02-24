@@ -71,7 +71,13 @@ class BOQItem(models.Model):
     product = models.ForeignKey(Product, null=True, blank=True, on_delete=models.PROTECT)
     driver = models.ForeignKey(Driver, null=True, blank=True, on_delete=models.PROTECT)
     accessory = models.ForeignKey(Accessory, null=True, blank=True, on_delete=models.PROTECT)
-
+    parent_product = models.ForeignKey(
+    Product,
+    null=True,
+    blank=True,
+    on_delete=models.CASCADE,
+    related_name="child_items"
+)
     quantity = models.PositiveIntegerField()
 
     unit_price = models.DecimalField(max_digits=12, decimal_places=2)

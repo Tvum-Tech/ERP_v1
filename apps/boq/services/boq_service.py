@@ -1,5 +1,6 @@
 import io
 import openpyxl
+
 from decimal import Decimal
 from datetime import date
 from django.utils import timezone
@@ -8,14 +9,32 @@ from django.db.models import Sum
 from django.http import HttpResponse
 from django.core.exceptions import ValidationError
 from django.db.models import Max
+from reportlab.platypus import Image
+from reportlab.lib.utils import ImageReader
+import os
 
-from reportlab.lib.pagesizes import A4
-from reportlab.pdfgen import canvas
+from reportlab.platypus import (
+    SimpleDocTemplate,
+    Paragraph,
+    Spacer,
+    Table,
+    TableStyle,
+    Image,
+)
+from apps.masters.models.product import Product
+from apps.masters.models.driver import Driver
+from apps.masters.models.accessory import Accessory
+from collections import defaultdict
+
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Table, TableStyle, Spacer, Image
+from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.units import mm
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_RIGHT
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+from django.db.models import Sum
 
 from apps.boq.models import BOQ, BOQItem
 from apps.projects.models import Project
@@ -24,125 +43,365 @@ from apps.configurations.models import (
     ConfigurationAccessory,
     ConfigurationDriver
 )
-
 class BOQPDFBuilder:
     def __init__(self, boq, is_draft=False):
         self.boq = boq
         self.is_draft = is_draft
         self.buffer = io.BytesIO()
-        self.pagesize = A4
+
+        # Landscape A4
+        self.pagesize = landscape(A4)
         self.width, self.height = self.pagesize
-        self.MARGIN_X = 15 * mm
-        self.MARGIN_Y = 20 * mm
+
+        self.MARGIN_X = 12 * mm
+        self.MARGIN_Y = 12 * mm
+
+        # Register Unicode font (for ₹ symbol)
+        font_path = os.path.join("fonts", "DejaVuSans.ttf")
+        pdfmetrics.registerFont(TTFont("DejaVu", font_path))
+
         self.styles = getSampleStyleSheet()
+
         self.style_normal = ParagraphStyle(
-            'CreateNormal', parent=self.styles['Normal'], fontSize=8, leading=10
+            'NormalSmall',
+            parent=self.styles['Normal'],
+            fontName='DejaVu',
+            fontSize=9,
+            leading=12
         )
 
+        self.style_bold = ParagraphStyle(
+            'BoldSmall',
+            parent=self.styles['Normal'],
+            fontName='DejaVu',
+            fontSize=9,
+            leading=12,
+        )
+
+    # --------------------------------------------------
+    # Header + Footer
+    # --------------------------------------------------
     def _header_footer(self, canvas, doc):
         canvas.saveState()
-        canvas.setFont('Helvetica-Bold', 14)
+
+        canvas.setFont('DejaVu', 14)
         canvas.drawString(self.MARGIN_X, self.height - 30, "TVUM TECH")
-        canvas.setFont('Helvetica', 10)
+
+        canvas.setFont('DejaVu', 10)
         canvas.drawString(self.MARGIN_X, self.height - 45, "Lighting ERP – Bill of Quantities")
-        canvas.setFont('Helvetica', 9)
+
+        canvas.setFont('DejaVu', 9)
         canvas.drawString(self.MARGIN_X, self.height - 65, f"Project: {self.boq.project.name}")
-        canvas.drawRightString(self.width - self.MARGIN_X, self.height - 65, f"BOQ Version: {self.boq.version}")
+        canvas.drawRightString(
+            self.width - self.MARGIN_X,
+            self.height - 65,
+            f"BOQ Version: {self.boq.version}"
+        )
+
         canvas.drawString(self.MARGIN_X, self.height - 80, f"Status: {self.boq.status}")
-        canvas.drawRightString(self.width - self.MARGIN_X, self.height - 80, f"Date: {date.today().strftime('%d-%m-%Y')}")
+        canvas.drawRightString(
+            self.width - self.MARGIN_X,
+            self.height - 80,
+            f"Date: {date.today().strftime('%d-%m-%Y')}"
+        )
+
         canvas.setStrokeColor(colors.black)
-        canvas.setLineWidth(0.5)
-        canvas.line(self.MARGIN_X, self.height - 90, self.width - self.MARGIN_X, self.height - 90)
-        canvas.setFont('Helvetica', 8)
-        canvas.drawCentredString(self.width / 2, 20, "System Generated BOQ | TVUM Lighting ERP")
-        canvas.drawRightString(self.width - self.MARGIN_X, 20, f"Page {doc.page}")
+        canvas.line(
+            self.MARGIN_X,
+            self.height - 90,
+            self.width - self.MARGIN_X,
+            self.height - 90
+        )
+
+        canvas.setFont('DejaVu', 8)
+        canvas.drawCentredString(
+            self.width / 2,
+            15,
+            "System Generated BOQ | TVUM Lighting ERP"
+        )
+        canvas.drawRightString(
+            self.width - self.MARGIN_X,
+            15,
+            f"Page {doc.page}"
+        )
+
         if self.is_draft:
             self._draw_watermark(canvas)
+
         canvas.restoreState()
 
+    # --------------------------------------------------
+    # Watermark
+    # --------------------------------------------------
     def _draw_watermark(self, canvas):
         canvas.saveState()
-        canvas.setFont('Helvetica-Bold', 36)
-        canvas.setStrokeColor(colors.lightgrey)
+        canvas.setFont('DejaVu', 50)
         canvas.setFillColor(colors.lightgrey, alpha=0.15)
-        text = "DRAFT – INTERNAL ESTIMATE – NOT FOR CLIENT USE"
-        canvas.translate(self.width/2, self.height/2)
+        canvas.translate(self.width / 2, self.height / 2)
         canvas.rotate(45)
-        canvas.drawCentredString(0, 0, text)
+        canvas.drawCentredString(0, 0, "DRAFT - FOR INTERNAL USE ONLY")
         canvas.restoreState()
 
+    # --------------------------------------------------
+    # Currency
+    # --------------------------------------------------
     def _format_currency(self, value):
-        return f"₹ {value:,.2f}"
+        return f"₹ {Decimal(value):,.2f}"
 
+    # --------------------------------------------------
+    # Main Builder
+    # --------------------------------------------------
     def build(self):
-        doc = SimpleDocTemplate(
-            self.buffer, pagesize=self.pagesize,
-            leftMargin=self.MARGIN_X, rightMargin=self.MARGIN_X,
-            topMargin=40 * mm, bottomMargin=30 * mm
-        )
-        elements = []
-        grand_total = Decimal(0)
-        # areas = self.boq.items.select_related("area").order_by("area__name").values_list("area__id", "area__name").distinct()
-        areas = (
-            self.boq.items
-            .select_related("area")
-            .values_list("area__id", "area__name")
-            .distinct()
-        )
-        for area_id, area_name in areas:
-            elements.append(Paragraph(f"<b>Area: {area_name}</b>", self.styles['Heading4']))
-            elements.append(Spacer(1, 5))
-            data = [["Type", "Item Code", "Description", "Qty", "Unit Rate", "Total"]]
-            col_widths = [25*mm, 40*mm, 60*mm, 15*mm, 25*mm, 25*mm]
-            area_total = Decimal(0)
-            items = self.boq.items.filter(area_id=area_id)
-            for item in items:
-                qty = Decimal(item.quantity)
-                selling_rate = Decimal(item.unit_price or 0) * (1 + Decimal(item.markup_pct or 0) / 100)
-                line_total = Decimal(item.final_price or 0)
-                area_total += line_total
-                grand_total += line_total
-                raw_desc = "-"
-                item_code = "-"
-                if item.item_type == "PRODUCT" and item.product:
-                    raw_desc = item.product.make
-                    item_code = item.product.order_code
-                elif item.item_type == "DRIVER" and item.driver:
-                    raw_desc = f"{item.driver.driver_make} - {item.driver.driver_code}"
-                elif item.item_type == "ACCESSORY" and item.accessory:
-                    raw_desc = item.accessory.accessory_name
 
-                data.append([
-                    item.item_type,
-                    Paragraph(item_code, self.style_normal),
-                    Paragraph(raw_desc, self.style_normal),
-                    str(qty),
-                    self._format_currency(selling_rate),
-                    self._format_currency(line_total)
-                ])
-            data.append(["", "", "Area Subtotal:", "", "", self._format_currency(area_total)])
-            table = Table(data, colWidths=col_widths, repeatRows=1)
+
+        doc = SimpleDocTemplate(
+            self.buffer,
+            pagesize=self.pagesize,
+            leftMargin=20 * mm,
+            rightMargin=20 * mm,
+            topMargin=35 * mm,
+            bottomMargin=25 * mm
+        )
+
+        elements = []
+
+        # Fetch cumulative items
+        all_items = BOQItem.objects.filter(
+            boq__project=self.boq.project,
+            boq__version__lte=self.boq.version
+        ).select_related("area", "product", "driver", "accessory")
+
+        # Merge identical items
+        grouped = defaultdict(lambda: {
+            "qty": Decimal(0),
+            "total": Decimal(0),
+            "sample": None
+        })
+
+        for item in all_items:
+            key = (
+                item.area_id,
+                item.item_type,
+                item.product_id,
+                item.driver_id,
+                item.accessory_id
+            )
+            grouped[key]["qty"] += Decimal(item.quantity or 0)
+            grouped[key]["total"] += Decimal(item.final_price or 0)
+            grouped[key]["sample"] = item
+
+        # Organize by area
+        area_map = defaultdict(list)
+        for data in grouped.values():
+            area_map[data["sample"].area].append(data)
+
+        grand_total = Decimal(0)
+
+        for area, items in area_map.items():
+
+            elements.append(Paragraph(
+                f"<b>Area: {area.name if area else 'General'}</b>",
+                self.styles['Heading4']
+            ))
+            elements.append(Spacer(1, 5))
+
+            table_data = [[
+                "Sr No",
+                "Sub Sr No",
+                "Image",
+                "Item Details",
+                "Qty",
+                "Unit",
+                "Rate",
+                "GST",
+                "Total"
+            ]]
+
+            area_total = Decimal(0)
+            area_subtotal = Decimal(0)
+            area_gst_total = Decimal(0)
+            area_final_total = Decimal(0)
+            area_qty_total = Decimal(0)
+            products = [d for d in items if d["sample"].item_type == "PRODUCT"]
+            subitems = [d for d in items if d["sample"].item_type != "PRODUCT"]
+
+            product_counter = 1
+
+            for pdata in products:
+
+                item = pdata["sample"]
+                qty = pdata["qty"]
+                line_total = pdata["total"]
+
+                gst_percent = Decimal("18")
+
+                rate = line_total / qty if qty > 0 else Decimal("0")
+
+                subtotal = line_total
+
+                gst_amount = subtotal * gst_percent / 100
+
+                new_total = subtotal + gst_amount
+                final_total = subtotal + gst_amount
+                area_qty_total += qty
+                area_subtotal += subtotal
+                area_gst_total += gst_amount
+                area_final_total += final_total     
+
+                product = item.product
+
+                details = f"<b>{product.order_code}</b><br/>{product.make} | {product.wattage}W | {product.cct_kelvin}K | {product.beam_angle_degree}°"
+
+                img = ""
+                if product.visual_image:
+                    try:
+                        img = Image(product.visual_image.path, width=28, height=28)
+                    except:
+                        img = ""
+
+                # Product Row
+                table_data.append([
+                        str(product_counter),
+                        "",
+                        img,
+                        Paragraph(details, self.style_normal),
+                        str(qty),
+                        "Nos",
+                        self._format_currency(rate),      # Rate = existing unit total
+                        f"{gst_percent}%",                # Show GST %
+                        self._format_currency(final_total)  # Total = subtotal + GST
+                    ])
+
+                area_total += new_total
+
+                # Sub rows
+                sub_counter = 1
+
+                for sdata in subitems:
+
+                    sitem = sdata["sample"]
+
+                    if sitem.parent_product_id == item.product_id:
+
+                        sqty = sdata["qty"]
+                        stotal = sdata["total"]
+
+                        gst_percent = Decimal("18")
+
+                        srate = stotal / sqty if sqty > 0 else Decimal("0")
+
+                        ssubtotal = stotal
+
+                        sgst_amount = ssubtotal * gst_percent / 100
+                        sfinal_total = ssubtotal + sgst_amount
+                        snew_total = ssubtotal + sgst_amount
+                        area_qty_total += sqty
+                        area_subtotal += ssubtotal
+                        area_gst_total += sgst_amount
+                        area_final_total += sfinal_total
+
+                        if sitem.item_type == "DRIVER":
+                            obj = sitem.driver
+                            sdesc = f" {obj.driver_make} {obj.driver_code}"
+                        else:
+                            obj = sitem.accessory
+                            sdesc = f" {obj.accessory_name}"
+
+                        table_data.append([
+                            "",
+                            f"{product_counter}.{sub_counter}",
+                            "",
+                            Paragraph(sdesc, self.style_normal),
+                            str(sqty),
+                            "Nos",  
+                            self._format_currency(srate),
+                            f"{gst_percent}%",
+                            self._format_currency(sfinal_total)
+                        ])
+
+                        area_total += snew_total
+                        sub_counter += 1
+
+                product_counter += 1
+
+            # Area Subtotal
+            table_data.append([
+    "", "", "", "Area Total",
+      str(int(area_qty_total)), "",
+
+    self._format_currency(area_subtotal),
+    self._format_currency(area_gst_total),
+    self._format_currency(area_final_total)
+])
+
+            usable_width = doc.width
+
+            table = Table(
+                table_data,
+                colWidths=[
+                    usable_width * 0.05,  # Sr No
+                    usable_width * 0.07,  # Sub Sr No
+                    usable_width * 0.08,  # Image
+                    usable_width * 0.28,  # Details
+                    usable_width * 0.07,  # Qty
+                    usable_width * 0.07,  # Unit
+                    usable_width * 0.10,  # Rate
+                    usable_width * 0.10,  # GST
+                    usable_width * 0.18,  # Total
+                ],
+                repeatRows=1,
+                hAlign="CENTER"
+            )
+
             table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), colors.Color(0.9, 0.9, 0.9)),
-                ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
-                ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
-                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (-1, 0), 9),
-                ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-                ('ALIGN', (3, 1), (-1, -1), 'RIGHT'),
-                ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#E8E8E8")),
+                ('FONTNAME', (0, 0), (-1, -1), 'DejaVu'),
+                ('FONTSIZE', (0, 0), (-1, 0), 10),
+                ('FONTSIZE', (0, 1), (-1, -1), 9),
+
+                ('ALIGN', (4, 1), (-1, -1), 'RIGHT'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+
+                ('LEFTPADDING', (0, 0), (-1, -1), 6),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+                ('TOPPADDING', (0, 0), (-1, -1), 5),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+
+                ('ROWBACKGROUNDS', (0, 1), (-1, -2),
+                [colors.white, colors.HexColor("#F7F7F7")]),
+
+                ('GRID', (0, 0), (-1, -1), 0.4, colors.grey),
+
+                ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor("#EFEFEF")),
             ]))
+
             elements.append(table)
-            elements.append(Spacer(1, 20))
-        elements.append(Paragraph(f"Grand Total: {self._format_currency(grand_total)}", ParagraphStyle('Total', parent=self.styles['Normal'], alignment=TA_RIGHT, fontSize=12, fontName='Helvetica-Bold')))
-        doc.build(elements, onFirstPage=self._header_footer, onLaterPages=self._header_footer)
+            elements.append(Spacer(1, 15))
+
+            grand_total += area_total
+
+        elements.append(Paragraph(
+            f"<b>Grand Total: {self._format_currency(grand_total)}</b>",
+            ParagraphStyle(
+                'Total',
+                parent=self.styles['Normal'],
+                alignment=TA_RIGHT,
+                fontName='DejaVu',
+                fontSize=13,
+            )
+        ))
+
+        doc.build(
+            elements,
+            onFirstPage=self._header_footer,
+            onLaterPages=self._header_footer
+        )
+
         self.buffer.seek(0)
         response = HttpResponse(self.buffer, content_type="application/pdf")
-        filename = f"BOQ_{self.boq.project.name}_V{self.boq.version}_{self.boq.status}.pdf"
+        filename = f"{self.boq.project.name}_V{self.boq.version}_{self.boq.status}.pdf"
         response["Content-Disposition"] = f'attachment; filename="{filename}"'
         return response
-
 @transaction.atomic
 def generate_boq(project, user):
 
@@ -226,6 +485,7 @@ def generate_boq(project, user):
             area=area,
             item_type="PRODUCT",
             product=product,
+            parent_product=product,
             quantity=config.quantity,
             unit_price=product_price,
             markup_pct=0,
@@ -242,6 +502,7 @@ def generate_boq(project, user):
                 item_type="DRIVER",
                 driver=drv.driver,
                 quantity=drv.quantity,
+                parent_product=product,
                 unit_price=driver_price,
                 markup_pct=0,
                 final_price=driver_price * drv.quantity,
@@ -256,6 +517,7 @@ def generate_boq(project, user):
                 area=area,
                 item_type="ACCESSORY",
                 accessory=acc.accessory,
+                parent_product=product, 
                 quantity=acc.quantity,
                 unit_price=acc_price,
                 markup_pct=0,
@@ -352,7 +614,17 @@ class BOQExcelBuilder:
         areas = self.boq.items.select_related("area").order_by("area__name").values_list("area__id", "area__name").distinct()
         for area_id, area_name in areas:
             self.write(1, f"Area: {area_name}", bold=True); self.row += 1
-            headers = ["Type", "Item Code", "Description", "Qty", "Unit Price (₹)", "Margin (%)", "Line Total (₹)"]
+            headers =[
+    "Image",
+    "Type",
+    "Code",
+    "Description",
+    "Qty",
+    "Unit",
+    "Rate",
+    "GST",
+    "Total"
+]
             for col, h in enumerate(headers, start=1): self.write(col, h, bold=True, align=self.center())
             self.row += 1
             area_total = Decimal(0)
