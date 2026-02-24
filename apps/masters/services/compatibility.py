@@ -157,15 +157,14 @@ def get_compatible_accessories(products):
         # Rule 1: Mounting style compatibility (Python-level filtering for SQLite compatibility)
         # Load all candidates and filter by checking if product.mounting_style exists
         # in accessory.compatible_mounting_styles JSONField array
-        if product.mounting_style in compat_styles:
+        if product.mounting_style:
             # Filter in Python: only include accessories where product.mounting_style
             # is in the compatible_mounting_styles list
             filtered_accessories = []
             for accessory in product_compatible:
                 # Get the compatible_mounting_styles field (JSONField as list)
-                # compat_styles = accessory.compatible_mounting_styles or []
-                compat_styles = set(accessory.compatible_mounting_styles or [])
-                
+                compat_styles = accessory.compatible_mounting_styles or []
+
                 # Ensure it's a list (defensive check)
                 if isinstance(compat_styles, list):
                     if product.mounting_style in compat_styles:

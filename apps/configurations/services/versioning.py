@@ -11,6 +11,7 @@ Key Concepts:
 """
 
 from django.db import transaction
+from django.core.exceptions import ValidationError
 from django.db.models import Max, Q
 from apps.configurations.models import LightingConfiguration, ConfigurationAccessory, ConfigurationDriver
 from apps.masters.models import Product, Driver, Accessory
@@ -18,6 +19,10 @@ from apps.configurations.models import (
     LightingConfiguration,
     ConfigurationDriver,
     ConfigurationAccessory
+)
+from apps.masters.services.compatibility import (
+    get_compatible_drivers,
+    get_compatible_accessories,
 )
 
 def get_latest_configuration_version(project_id, area_id):
@@ -80,25 +85,32 @@ def create_configuration_version(project_id, area_id, products_data, drivers_dat
     if missing_products:
         raise ValidationError(f"Invalid product IDs: {missing_products}")
 
-    # Validate drivers
+    # Validate drivers/accessories IDs (global + per-product forms)
+    explicit_driver_ids = []
+    explicit_accessory_ids = []
+
+    for p in products_data:
+        explicit_driver_ids.extend([(d or {}).get("driver_id") for d in p.get("drivers", [])])
+        explicit_accessory_ids.extend([(a or {}).get("accessory_id") for a in p.get("accessories", [])])
+
     if drivers_data:
-        driver_ids = [d.get("driver_id") for d in drivers_data]
-        existing_drivers = set(
-            Driver.objects.filter(id__in=driver_ids)
-            .values_list("id", flat=True)
-        )
-        missing_drivers = set(driver_ids) - existing_drivers
+        explicit_driver_ids.extend([d.get("driver_id") for d in drivers_data])
+
+    if accessories_data:
+        explicit_accessory_ids.extend([a.get("accessory_id") for a in accessories_data])
+
+    explicit_driver_ids = [d for d in explicit_driver_ids if d]
+    explicit_accessory_ids = [a for a in explicit_accessory_ids if a]
+
+    if explicit_driver_ids:
+        existing_drivers = set(Driver.objects.filter(id__in=explicit_driver_ids).values_list("id", flat=True))
+        missing_drivers = set(explicit_driver_ids) - existing_drivers
         if missing_drivers:
             raise ValidationError(f"Invalid driver IDs: {missing_drivers}")
 
-    # Validate accessories
-    if accessories_data:
-        acc_ids = [a.get("accessory_id") for a in accessories_data]
-        existing_accessories = set(
-            Accessory.objects.filter(id__in=acc_ids)
-            .values_list("id", flat=True)
-        )
-        missing_acc = set(acc_ids) - existing_accessories
+    if explicit_accessory_ids:
+        existing_accessories = set(Accessory.objects.filter(id__in=explicit_accessory_ids).values_list("id", flat=True))
+        missing_acc = set(explicit_accessory_ids) - existing_accessories
         if missing_acc:
             raise ValidationError(f"Invalid accessory IDs: {missing_acc}")
 
@@ -127,24 +139,52 @@ def create_configuration_version(project_id, area_id, products_data, drivers_dat
         created_configs.append(config)
 
         # -------------------------------
-        # DRIVER LINK (per product)
+        # COMPATIBILITY VALIDATION + LINKS (per product)
         # -------------------------------
-        driver_id = prod_data.get("driver_id")
-        if driver_id:
+        product_qs = Product.objects.filter(prod_id=prod_data["product_id"])
+        compatible_driver_ids = set(get_compatible_drivers(product_qs).values_list("id", flat=True))
+        compatible_accessory_ids = set(get_compatible_accessories(product_qs).values_list("id", flat=True))
+
+        # Backward compatible inputs:
+        # - preferred: prod_data["drivers"] list
+        # - legacy: prod_data["driver_id"] single
+        # - fallback: top-level drivers_data list
+        product_drivers = prod_data.get("drivers", [])
+        if not product_drivers and prod_data.get("driver_id"):
+            product_drivers = [{
+                "driver_id": prod_data.get("driver_id"),
+                "quantity": prod_data.get("quantity", 1),
+            }]
+        if not product_drivers and drivers_data:
+            product_drivers = drivers_data
+
+        for drv in product_drivers:
+            driver_id = drv.get("driver_id")
+            if not driver_id:
+                continue
+            if driver_id not in compatible_driver_ids:
+                raise ValidationError(
+                    f"Driver {driver_id} is not compatible with product {prod_data['product_id']}"
+                )
             ConfigurationDriver.objects.create(
                 configuration=config,
                 driver_id=driver_id,
-                quantity=prod_data.get("quantity", 1),
+                quantity=drv.get("quantity", prod_data.get("quantity", 1)),
             )
 
-        # -------------------------------
-        # ACCESSORY LINKS (per product)
-        # -------------------------------
-        accessories = prod_data.get("accessories", [])
-        for acc in accessories:
+        # preferred: prod_data["accessories"]; fallback top-level accessories_data
+        product_accessories = prod_data.get("accessories", []) or accessories_data or []
+        for acc in product_accessories:
+            accessory_id = acc.get("accessory_id")
+            if not accessory_id:
+                continue
+            if accessory_id not in compatible_accessory_ids:
+                raise ValidationError(
+                    f"Accessory {accessory_id} is not compatible with product {prod_data['product_id']}"
+                )
             ConfigurationAccessory.objects.create(
                 configuration=config,
-                accessory_id=acc.get("accessory_id"),
+                accessory_id=accessory_id,
                 quantity=acc.get("quantity", 1),
             )
 

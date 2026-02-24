@@ -76,7 +76,7 @@ class Project(models.Model):
     
     name = models.CharField(max_length=150)
 
-    project_code = models.CharField(max_length=50, unique=True)
+    project_code = models.CharField(max_length=50, unique=True, blank=True, null=True)
     
     def save(self, *args, **kwargs):
         is_new = self.pk is None
@@ -111,7 +111,7 @@ class Project(models.Model):
         default="INQUIRY"
     )
     expected_completion_date = models.DateField(blank=True, null=True)
-    refered_by = models.CharField(blank=True, null=True)
+    refered_by = models.CharField(max_length=150, blank=True, null=True)
     segment_area = models.CharField(
         max_length=100,
         choices=segement_choice,
@@ -125,6 +125,29 @@ class Project(models.Model):
     fee = models.PositiveIntegerField(
         validators=[MaxValueValidator(9999999999)]
     )
+
+    CURRENCY_CHOICES = [
+        ("INR", "Indian Rupee"),
+        ("USD", "US Dollar"),
+        ("EUR", "Euro"),
+        ("GBP", "British Pound"),
+        ("THB", "Thai Baht"),
+        ("AED", "UAE Dirham"),
+        ("CNY", "Chinese Yuan"),
+    ]
+
+    currency = models.CharField(max_length=10, choices=CURRENCY_CHOICES, default="INR")
+
+    # User-entered rate: 1 INR = ? Foreign Currency
+    exchange_rate = models.DecimalField(
+        max_digits=12,
+        decimal_places=6,
+        default=1
+    )
+
+    exchange_rate_locked = models.BooleanField(default=False)
+    exchange_rate_locked_at = models.DateTimeField(null=True, blank=True)
+
     description = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     # billing_details = models.JSONField(default=dict, blank=True, null=True)
