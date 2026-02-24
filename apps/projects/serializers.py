@@ -64,6 +64,10 @@ class ProjectSerializer(serializers.ModelSerializer):
             "segment_area",
             "expecetd_mhr",
             "fee",
+            "currency",
+            "exchange_rate",
+            "exchange_rate_locked",
+            "exchange_rate_locked_at",
             "area_details",
             "description",
             "notes",
@@ -168,6 +172,5 @@ class ProjectSerializer(serializers.ModelSerializer):
             validated_data["area_details"] = existing_area
 
         return super().update(instance, validated_data)
-
 
 
