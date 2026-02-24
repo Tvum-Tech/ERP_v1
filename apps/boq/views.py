@@ -111,7 +111,7 @@ class BOQSummaryDetailAPI(APIView):
 
     def get(self, request, boq_id):
         boq = get_object_or_404(BOQ, id=boq_id)
-
+        print("params", request.query_params)
         # 🔥 cumulative BOQ items
         items = BOQItem.objects.filter(
             boq__project=boq.project,
