@@ -107,27 +107,43 @@ class BOQSummaryAPI(APIView):
 class BOQSummaryDetailAPI(APIView):
     """
     Specific BOQ summary by ID (CUMULATIVE)
+    Supports optional filtering by area and subarea
     """
 
     def get(self, request, boq_id):
+
         boq = get_object_or_404(BOQ, id=boq_id)
-        print("params", request.query_params)
-        # 🔥 cumulative BOQ items
+
+        area_id = request.query_params.get("area_id")
+        subarea_id = request.query_params.get("subarea_id")
+
+        # 🔥 Base cumulative queryset
         items = BOQItem.objects.filter(
             boq__project=boq.project,
             boq__version__lte=boq.version
-        ).select_related(
+        )
+
+        # 🔥 Apply filters only if provided
+        if area_id:
+            items = items.filter(area_id=area_id)
+
+        if subarea_id:
+            items = items.filter(subarea_id=subarea_id)
+
+        items = items.select_related(
             "product",
             "driver",
             "accessory",
-            "area"
+            "area",
+            "subarea"
         ).order_by("boq__version", "id")
 
-        # serialize items
+        # Serialize
         items_data = BOQItemSerializer(items, many=True).data
 
         # -------- summary calculation ----------
         summary_map = {}
+
         for item in items:
             key = item.item_type
 
@@ -150,30 +166,48 @@ class BOQSummaryDetailAPI(APIView):
             "created_at": boq.created_at,
             "source_configuration_version": boq.source_configuration_version,
 
-            # cumulative totals
+            # Applied filters info (optional but good for frontend)
+            "filters": {
+                "area": area_id,
+                "subarea": subarea_id
+            },
+
             "summary": summary_map,
             "subtotal": subtotal,
             "margin_percent": margin_percent,
             "margin_amount": margin_amount,
             "grand_total": grand_total,
 
-            # 🔥 NEW FIELD
             "items": items_data
         })
 
-
 class BOQVersionsListAPI(APIView):
     """
-    List all BOQ versions for a project.
-    MANDATORY ENDPOINT CHECK.
+    List BOQ versions for a project.
+    Optional filtering by area and subarea.
     """
-    filter_backends = [SearchFilter, DjangoFilterBackend]
+
     def get(self, request, project_id):
         project = get_object_or_404(Project, id=project_id)
+
+        area_id = request.query_params.get("area_id")
+        subarea_id = request.query_params.get("subarea_id")
+
+        boqs = BOQ.objects.filter(project=project)
+
+        # 🔥 Filter by area (if provided)
+        if area_id:
+            boqs = boqs.filter(items__area_id=area_id)
+
+        # 🔥 Filter by subarea (if provided)
+        if subarea_id:
+            boqs = boqs.filter(items__subarea_id=subarea_id)
+
+        # Important: avoid duplicates because of JOIN
+        boqs = boqs.distinct()
+
         boqs = list(
-            BOQ.objects.filter(project=project)
-            .order_by('-version')
-            .values(
+            boqs.order_by('-version').values(
                 'id',
                 'version',
                 'status',
@@ -181,8 +215,8 @@ class BOQVersionsListAPI(APIView):
                 'source_configuration_version'
             )
         )
-        return Response(boqs)
 
+        return Response(boqs)
 
   
 class BOQApproveAPI(APIView):

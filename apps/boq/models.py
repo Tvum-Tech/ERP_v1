@@ -1,5 +1,5 @@
 from django.db import models
-from apps.projects.models import Project, Area
+from apps.projects.models import Project, Area, SubArea
 from apps.masters.models import Product, Driver, Accessory
 from django.contrib.auth import get_user_model
 
@@ -53,6 +53,13 @@ class BOQItem(models.Model):
     boq = models.ForeignKey(BOQ, on_delete=models.CASCADE, related_name="items")
     area = models.ForeignKey(
         Area,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="boq_items"
+    )
+    subarea = models.ForeignKey(   # ✅ ADD THIS
+        SubArea,
         null=True,
         blank=True,
         on_delete=models.SET_NULL,

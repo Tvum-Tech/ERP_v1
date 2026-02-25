@@ -21,7 +21,7 @@ from reportlab.platypus import (
     TableStyle,
     Image,
 )
-from apps.masters.models.product import Product
+from apps.masters.models.product import Product 
 from apps.masters.models.driver import Driver
 from apps.masters.models.accessory import Accessory
 from collections import defaultdict
@@ -403,7 +403,7 @@ class BOQPDFBuilder:
         response["Content-Disposition"] = f'attachment; filename="{filename}"'
         return response
 @transaction.atomic
-def generate_boq(project, user):
+def generate_boq(project, user, area_id=None, subarea_id=None):
 
     # -----------------------------
     # 1. Load Project
@@ -417,7 +417,19 @@ def generate_boq(project, user):
     active_configs = LightingConfiguration.objects.filter(
         project=project,
         is_active=True
-    ).select_related("area", "subarea", "product")
+    )
+
+    # 🔥 Apply Area Filter (if provided)
+    if area_id:
+        active_configs = active_configs.filter(area_id=area_id)
+
+    # 🔥 Apply SubArea Filter (if provided)
+    if subarea_id:
+        active_configs = active_configs.filter(subarea_id=subarea_id)
+
+    active_configs = active_configs.select_related(
+        "area", "subarea", "product"
+    )
 
     if not active_configs.exists():
         raise ValidationError("No active configurations found.")
@@ -451,7 +463,7 @@ def generate_boq(project, user):
         version=next_version,
         created_by=user,
         status="DRAFT",
-        source_configuration_version=next_version  # snapshot marker
+        source_configuration_version=next_version
     )
 
     # -----------------------------
@@ -483,6 +495,7 @@ def generate_boq(project, user):
         BOQItem.objects.create(
             boq=boq,
             area=area,
+            subarea=subarea,
             item_type="PRODUCT",
             product=product,
             parent_product=product,
@@ -499,6 +512,7 @@ def generate_boq(project, user):
             BOQItem.objects.create(
                 boq=boq,
                 area=area,
+                subarea=subarea,
                 item_type="DRIVER",
                 driver=drv.driver,
                 quantity=drv.quantity,
@@ -515,9 +529,10 @@ def generate_boq(project, user):
             BOQItem.objects.create(
                 boq=boq,
                 area=area,
+                subarea=subarea,
                 item_type="ACCESSORY",
                 accessory=acc.accessory,
-                parent_product=product, 
+                parent_product=product,
                 quantity=acc.quantity,
                 unit_price=acc_price,
                 markup_pct=0,

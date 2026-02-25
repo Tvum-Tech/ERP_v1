@@ -62,6 +62,7 @@ class LightingConfigurationListAPI(ModelViewSet):
     def by_subarea(self, request, subarea_id=None):
         configs = self.get_queryset().filter(subarea_id=subarea_id)
         serializer = self.get_serializer(configs, many=True)
+            
         return Response(serializer.data)
 
     @action(
@@ -105,7 +106,7 @@ class LightingConfigurationListAPI(ModelViewSet):
 
     def save_batch(self, request):
         data = request.data
-
+        
         area_id = data.get("area_id")
         subarea_id = data.get("subarea_id")
         project_id = data.get("project_id")
