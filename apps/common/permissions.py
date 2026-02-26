@@ -66,7 +66,7 @@ class IsEditor(permissions.BasePermission):
                 return True
 
     # allow Admin / Sales group
-        return request.user.groups.filter(name__in=['Admin', 'Sales']).exists()
+            return request.user.groups.filter(name__in=['Admin', 'Sales']).exists()
 
         if not request.user or not request.user.is_authenticated:
             return False

@@ -545,11 +545,35 @@ def generate_boq(project, user, area_id=None, subarea_id=None):
             )
 
     return boq
+
+
+# -----------------------------------------
+# Currency Conversion Helper (ADD HERE)
+# -----------------------------------------
+def convert_to_fx(amount, boq):
+    from decimal import Decimal
+
+    if boq.currency == "INR":
+        return Decimal(amount or 0)
+
+    return Decimal(amount or 0) / Decimal(boq.exchange_rate or 1)
+
+
 def get_boq_summary(boq):
     if not boq:
         return None
 
-    # 🔥 cumulative items
+    # -----------------------------------
+    # Helper: INR → FX conversion
+    # -----------------------------------
+    def convert_to_fx(amount):
+        if boq.currency == "INR":
+            return Decimal(amount or 0)
+        return Decimal(amount or 0) / Decimal(boq.exchange_rate or 1)
+
+    # -----------------------------------
+    # Cumulative Items (Version Aware)
+    # -----------------------------------
     items = BOQItem.objects.filter(
         boq__project=boq.project,
         boq__version__lte=boq.version
@@ -559,18 +583,38 @@ def get_boq_summary(boq):
     )
 
     summary = {}
+    subtotal_inr = Decimal(0)
+
     for item in items:
+        qty = item["total_qty"] or 0
+        amount = Decimal(item["total_value"] or 0)
+
+        subtotal_inr += amount
+
         summary[item["item_type"]] = {
-            "quantity": item["total_qty"],
-            "amount": float(item["total_value"] or 0)
+            "quantity": qty,
+            "amount_inr": float(amount),
+            "amount_fx": float(convert_to_fx(amount))
         }
 
+    grand_total_inr = subtotal_inr
+    grand_total_fx = convert_to_fx(grand_total_inr)
+
+    # -----------------------------------
+    # Final Response
+    # -----------------------------------
     return {
         "project_id": boq.project.id,
         "boq_id": boq.id,
         "version": boq.version,
         "status": boq.status,
+        "currency": boq.currency,
+        "exchange_rate": float(boq.exchange_rate),
         "summary": summary,
+        "subtotal_inr": float(subtotal_inr),
+        "subtotal_fx": float(convert_to_fx(subtotal_inr)),
+        "grand_total_inr": float(grand_total_inr),
+        "grand_total_fx": float(grand_total_fx),
         "created_at": boq.created_at,
         "source_configuration_version": boq.source_configuration_version
     }

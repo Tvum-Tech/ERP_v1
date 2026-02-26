@@ -41,6 +41,17 @@ class AreaSerializer(serializers.ModelSerializer):
         model = Area
         fields = '__all__'
         
+
+from decimal import Decimal
+from rest_framework import serializers
+from .models import Project
+# # from .nested_serializers import (
+#     LocationMetadataSerializer,
+#     AreaDetailsSerializer,
+#     AreaSerializer,
+# )
+
+
 class ProjectSerializer(serializers.ModelSerializer):
     location_metadata = LocationMetadataSerializer(required=False)
     area_details = AreaDetailsSerializer(required=False)
@@ -53,9 +64,13 @@ class ProjectSerializer(serializers.ModelSerializer):
             "name",
             "client_name",
             "project_code",
-
-            # NEW (very important)
             "inquiry_type",
+
+            # ✅ Currency Fields
+            "currency",
+            "exchange_rate",
+            "exchange_rate_locked",
+            "exchange_rate_locked_at",
 
             "location_metadata",
             "status",
@@ -71,11 +86,19 @@ class ProjectSerializer(serializers.ModelSerializer):
             "created_at",
             "areas",
         ]
-        read_only_fields = ("project_code", "created_at", "id")
 
+        read_only_fields = (
+            "project_code",
+            "created_at",
+            "id",
+        )
+
+    # ---------------------------------------------------
+    # Representation
+    # ---------------------------------------------------
     def to_representation(self, instance):
         rep = super().to_representation(instance)
-        # Ensure JSON fields are represented as dictionaries (not None)
+
         rep.setdefault(
             "location_metadata",
             instance.location_metadata or {
@@ -85,20 +108,23 @@ class ProjectSerializer(serializers.ModelSerializer):
                 "country": "",
             },
         )
+
         rep.setdefault(
             "area_details",
-            instance.area_details
-            or {
+            instance.area_details or {
                 "landscape_area": 0,
                 "interior_area": 0,
                 "facade_area": 0,
                 "unit": "sqft",
             },
         )
+
         return rep
 
+    # ---------------------------------------------------
+    # Create
+    # ---------------------------------------------------
     def create(self, validated_data):
-        # Extract nested json-like data and construct final dicts with defaults
         loc = validated_data.pop("location_metadata", None)
         area = validated_data.pop("area_details", None)
 
@@ -124,8 +150,10 @@ class ProjectSerializer(serializers.ModelSerializer):
 
         return super().create(validated_data)
 
+    # ---------------------------------------------------
+    # Update
+    # ---------------------------------------------------
     def update(self, instance, validated_data):
-        # Merge JSON fields rather than overwrite on partial updates
         loc = validated_data.pop("location_metadata", serializers.empty)
         area = validated_data.pop("area_details", serializers.empty)
 
@@ -146,14 +174,16 @@ class ProjectSerializer(serializers.ModelSerializer):
                 "facade_area": 0,
                 "unit": "sqft",
             }
+
             existing_area.update(area)
-            # prevent negative values
+
+            # Prevent negative values
             for k, v in list(existing_area.items()):
-                # skip validation for unit field
                 if k == "unit":
                     if not v:
                         existing_area[k] = "sqft"
                     continue
+
                 try:
                     if v is None:
                         existing_area[k] = 0
@@ -165,9 +195,29 @@ class ProjectSerializer(serializers.ModelSerializer):
                     raise serializers.ValidationError(
                         {"area_details": f"Invalid numeric value for {k}"}
                     )
+
             validated_data["area_details"] = existing_area
 
         return super().update(instance, validated_data)
 
+    # ---------------------------------------------------
+    # Currency Validation
+    # ---------------------------------------------------
+    def validate(self, attrs):
+        currency = attrs.get(
+            "currency",
+            getattr(self.instance, "currency", "INR"),
+        )
 
+        rate = attrs.get(
+            "exchange_rate",
+            getattr(self.instance, "exchange_rate", 1),
+        )
 
+        if currency != "INR":
+            if not rate or Decimal(rate) <= 0:
+                raise serializers.ValidationError(
+                    {"exchange_rate": "Valid exchange rate required for foreign currency"}
+                )
+
+        return attrs

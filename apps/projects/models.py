@@ -132,6 +132,32 @@ class Project(models.Model):
         default=default_area_details,
         blank=True,
     )
+
+    CURRENCY_CHOICES = [
+        ("INR", "Indian Rupee"),
+        ("USD", "US Dollar"),
+        ("GBP", "British Pound"),
+        ("THB", "Thai Baht"),
+        ("AED", "UAE Dirham"),
+        ("CNY", "Chinese Yuan"),
+    ]
+
+    currency = models.CharField(
+        max_length=5,
+        choices=CURRENCY_CHOICES,
+        default="INR"
+    )
+
+    exchange_rate = models.DecimalField(
+        max_digits=12,
+        decimal_places=6,
+        default=1
+    )
+
+    exchange_rate_locked = models.BooleanField(default=False)
+    exchange_rate_locked_at = models.DateTimeField(null=True, blank=True)
+
+
     notes = models.TextField(blank=True, null=True, max_length=1000)
     tags = models.TextField(max_length=100, blank=True, null=True)
 
