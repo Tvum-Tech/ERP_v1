@@ -31,4 +31,5 @@ urlpatterns = [
     
     # Price Override (Transactional)
     path("items/<int:boq_item_id>/price/", BOQItemPriceUpdateAPI.as_view()),
+    path("items/<int:boq_item_id>/", BOQItemViewSet.as_view({"get": "retrieve", "put": "update", "patch": "partial_update"})),
 ]

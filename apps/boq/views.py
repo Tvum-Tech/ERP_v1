@@ -17,7 +17,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from apps.boq.services.boq_service import BOQPDFBuilder
 from apps.boq.services.boq_service import BOQExcelBuilder
-from apps.boq.serializers import BOQSerializer, BOQItemSerializer, BOQItemWriteSerializer
+from apps.boq.serializers import BOQItemEditSerializer, BOQItemQuantityUpdateSerializer, BOQSerializer, BOQItemSerializer, BOQItemWriteSerializer
 from apps.common.authentication import QueryParamJWTAuthentication
 from rest_framework.generics import GenericAPIView
 from rest_framework.serializers import Serializer
@@ -39,7 +39,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 class GenerateBOQAPI(APIView):
     # serializer_class = Serializer
     serializer_class = BOQSerializer
-    permission_classes = [IsEditor]
+    permission_classes = [IsAdmin|IsEditor]
     filter_backends = [SearchFilter, DjangoFilterBackend]
     def post(self, request, project_id):
         try:
@@ -435,10 +435,10 @@ class BOQViewSet(ModelViewSet):
         )
     
 class BOQItemViewSet(ModelViewSet):
-    permission_classes = [IsEditorOrReadOnly]
+    permission_classes = [IsEditorOrReadOnly | IsEditor]
     filter_backends = [SearchFilter, DjangoFilterBackend]
     queryset = BOQItem.objects.all()
-    serializer_class = BOQItemSerializer
+    serializer_class = BOQItemEditSerializer
 
     def get_queryset(self):
         """Filter BOQ items by boq_id query parameter if provided"""
@@ -447,4 +447,41 @@ class BOQItemViewSet(ModelViewSet):
         if boq_id:
             queryset = queryset.filter(boq_id=boq_id)
         return queryset
+    def get_serializer_class(self):
+        if self.action in ['update', 'partial_update']:
+            return BOQItemEditSerializer
+        return BOQItemSerializer
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
 
+        if instance.boq.status != "DRAFT":
+            return Response(
+                {"detail": "Cannot delete item from approved BOQ"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        from apps.boq.models import AuditLogEntry
+
+        AuditLogEntry.objects.create(
+            user=request.user,
+            action="BOQ_ITEM_DELETED",
+            details={
+                "boq_id": instance.boq.id,
+                "version": instance.boq.version,
+                "boq_item_id": instance.id,
+                "item_type": instance.item_type,
+                "quantity": float(instance.quantity),
+                "final_price": float(instance.final_price),
+            }
+        )
+
+        instance.delete()
+
+        return Response(
+            {"detail": "BOQ item deleted successfully"},
+            status=status.HTTP_204_NO_CONTENT
+        )
+    def get_permissions(self):
+        if self.action in ['destroy', 'update', 'partial_update', 'create']:
+            return [IsEditor()]
+        return [IsEditorOrReadOnly()]
