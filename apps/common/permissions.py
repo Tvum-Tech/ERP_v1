@@ -1,3 +1,5 @@
+from urllib import request
+
 from rest_framework import permissions
 
 class BaseRolePermission(permissions.BasePermission):
@@ -55,9 +57,16 @@ class IsEditor(permissions.BasePermission):
     Allows Admin or Sales to edit (C/U), blocks DELETE.
     """
     def has_permission(self, request, view):
+        print(f"Checking permissions for {request.user} on {request.method} {request.path}")
+
         # GLOBAL ERP RULE: No one can delete
         if request.method == 'DELETE':
-            return False
+    # allow superuser
+            if request.user and request.user.is_superuser:
+                return True
+
+    # allow Admin / Sales group
+        return request.user.groups.filter(name__in=['Admin', 'Sales']).exists()
 
         if not request.user or not request.user.is_authenticated:
             return False
@@ -73,8 +82,10 @@ class IsEditorOrReadOnly(permissions.BasePermission):
     """
     def has_permission(self, request, view):
         # GLOBAL ERP RULE: No one can delete
+        print(f"Checking permissions for {request.user} on {request.method} {request.path}")
         if request.method == 'DELETE':
-            return False
+             return request.user.is_superuser or \
+                    request.user.groups.filter(name__in=['Admin', 'Sales']).exists()
 
         if request.method in permissions.SAFE_METHODS:
             return request.user and request.user.is_authenticated

@@ -87,7 +87,7 @@ class BOQItemWriteSerializer(serializers.ModelSerializer):
             "accessory",
             "quantity",
             "unit_price",
-            "markup_pct",
+            "markup_pct", 
             "final_price",
         ]
 
@@ -150,3 +150,76 @@ class BOQItemPriceUpdateSerializer(serializers.Serializer):
         if value < 0:
             raise serializers.ValidationError("unit_price cannot be negative")
         return value
+    
+    def validate(self, data):
+        boq_item = self.context['boq_item']
+        boq = boq_item.boq
+        if boq.status != "DRAFT":
+            raise serializers.ValidationError("Approved BOQ cannot be modified")
+        return data
+    # i want to update quantity or field or other fiels in versioning system. how to do that?
+
+    def update(self, instance, validated_data):
+        instance.unit_price = validated_data['unit_price']
+        instance.final_price = (instance.unit_price * instance.quantity * (1 + instance.markup_pct / 100))
+        instance.save()
+        return instance
+
+
+class BOQItemQuantityUpdateSerializer(serializers.Serializer):
+    quantity = serializers.IntegerField(
+        required=True,
+        min_value=0,
+        error_messages={
+            'required': 'quantity is required',
+            'invalid': 'quantity must be a valid integer',
+            'min_value': 'quantity cannot be negative'
+        }
+    )
+
+    def validate_quantity(self, value):
+        """Validate that quantity is positive"""
+        if value < 0:
+            raise serializers.ValidationError("quantity cannot be negative")
+        return value
+    
+    def validate(self, data):
+        boq_item = self.context['boq_item']
+        boq = boq_item.boq
+        if boq.status != "DRAFT":
+            raise serializers.ValidationError("Approved BOQ cannot be modified")
+        return data
+
+    def update(self, instance, validated_data):
+        instance.quantity = validated_data['quantity']
+        instance.final_price = (instance.unit_price * instance.quantity * (1 + instance.markup_pct / 100))
+        instance.save()
+        return instance
+
+
+class BOQItemEditSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = BOQItem
+        fields = ["quantity", "unit_price", "markup_pct"]
+
+    def update(self, instance, validated_data):
+
+        if instance.boq.status != "DRAFT":
+            raise serializers.ValidationError("Only DRAFT BOQ can be edited.")
+
+        quantity = validated_data.get("quantity", instance.quantity)
+        unit_price = validated_data.get("unit_price", instance.unit_price)
+        markup_pct = validated_data.get("markup_pct", instance.markup_pct)
+
+        base_total = quantity * unit_price
+        markup_amount = base_total * (markup_pct / 100)
+        final_price = base_total + markup_amount
+
+        instance.quantity = quantity
+        instance.unit_price = unit_price
+        instance.markup_pct = markup_pct
+        instance.final_price = final_price
+        instance.save()
+
+        return instance
