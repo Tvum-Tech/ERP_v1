@@ -6,6 +6,11 @@ db.sqlite3
 __pycache__/
 *.py[cod]
 *$py.class
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
 
 # Django
 *.log

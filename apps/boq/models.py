@@ -2,7 +2,7 @@ from django.db import models
 from apps.projects.models import Project, Area, SubArea
 from apps.masters.models import Product, Driver, Accessory
 from django.contrib.auth import get_user_model
-
+from decimal import Decimal
 
 User = get_user_model()
 
@@ -17,8 +17,11 @@ class BOQ(models.Model):
     - BOQ versioning is separate from configuration versioning
     - Draft BOQ is editable, Final BOQ is locked
     """
+
     project = models.ForeignKey(Project, on_delete=models.CASCADE)
+
     version = models.PositiveIntegerField()
+
     status = models.CharField(
         max_length=20,
         choices=[
@@ -35,12 +38,24 @@ class BOQ(models.Model):
         null=True,
         blank=True
     )
-    
+
     # ERP: Track which configuration version this BOQ was generated from
     source_configuration_version = models.PositiveIntegerField(null=True, blank=True)
-    
+
     created_at = models.DateTimeField(auto_now_add=True)
     locked_at = models.DateTimeField(null=True, blank=True)
+
+    # 🔥 ADD THESE FIELDS (Currency Snapshot)
+    currency = models.CharField(
+        max_length=10,
+        default="INR"
+    )
+
+    exchange_rate = models.DecimalField(
+        max_digits=12,
+        decimal_places=6,
+        default=Decimal("1.000000")
+    )
 
     class Meta:
         unique_together = ("project", "version")

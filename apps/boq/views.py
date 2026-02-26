@@ -97,6 +97,8 @@ class BOQSummaryAPI(APIView):
         margin_amount = subtotal * (margin_percent / 100)
         grand_total = subtotal + margin_amount
         summary.update({
+            "currency": boq.currency,
+            "exchange_rate": boq.exchange_rate,
             "subtotal": subtotal,
             "margin_percent": margin_percent,
             "margin_amount": margin_amount,
@@ -166,7 +168,11 @@ class BOQSummaryDetailAPI(APIView):
             "created_at": boq.created_at,
             "source_configuration_version": boq.source_configuration_version,
 
-            # Applied filters info (optional but good for frontend)
+            # 🔥 ADD THIS (BOQ snapshot, not project live)
+            "currency": boq.currency,
+            "exchange_rate": boq.exchange_rate,
+
+            # Applied filters info
             "filters": {
                 "area": area_id,
                 "subarea": subarea_id

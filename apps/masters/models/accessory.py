@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.db import models
 from django.core.exceptions import ValidationError
 import random
@@ -48,10 +50,16 @@ class Accessory(models.Model):
         ]
     )
 
+    environment = models.CharField(
+        max_length=20,
+        choices=[('INDOOR', 'Indoor'), ('OUTDOOR', 'Outdoor')],
+        default='INDOOR'
+    )
+    
     base_price = models.DecimalField(
         max_digits=12,
         decimal_places=2,
-        default=random.randint(1,99)
+        default=Decimal("0.00")
     )
     
     def __str__(self):

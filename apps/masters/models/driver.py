@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.db import models
 import random
 
@@ -17,7 +19,8 @@ class Driver(models.Model):
         default='YES'
     )
 
-    output_current_ma = models.IntegerField(null=True, blank=True)
+    output_current_min_ma = models.IntegerField(null=True, blank=True)
+    output_current_max_ma = models.IntegerField(null=True, blank=True)
     output_voltage_min = models.IntegerField(null=True, blank=True)
     output_voltage_max = models.IntegerField(null=True, blank=True)
 
@@ -41,11 +44,16 @@ class Driver(models.Model):
     ip_class = models.IntegerField(null=True, blank=True)
     warranty_years = models.IntegerField(null=True, blank=True)
 
+    environment = models.CharField(
+        max_length=20,
+        choices=[('INDOOR', 'Indoor'), ('OUTDOOR', 'Outdoor')],
+        default='INDOOR'
+    )
     
     base_price = models.DecimalField(
         max_digits=12,
         decimal_places=2,
-        default=random.randint(1,99)
+        default=Decimal("0.00")
     )
 
     def __str__(self):

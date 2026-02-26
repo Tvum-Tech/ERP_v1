@@ -12,11 +12,14 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.filters import SearchFilter
 from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.parsers import MultiPartParser, FormParser
 
-class ProductListAPI(mixins.CreateModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet):
-    queryset = Product.objects.all()
+class ProductListAPI(viewsets.ModelViewSet):
+    queryset = Product.objects.all().order_by('-prod_id')
     serializer_class = ProductSerializer
+    lookup_field = "prod_id"   # IMPORTANT: use prod_id for lookups instead of default pk/id
     permission_classes = [IsAdminOrReadOnly]
+    parser_classes = [MultiPartParser, FormParser]
 
     filter_backends = [DjangoFilterBackend, SearchFilter]
     search_fields = ["make", "order_code", "wattage", "lumen_output", "cct_kelvin", "beam_angle_degree"]
@@ -39,12 +42,8 @@ class ProductListAPI(mixins.CreateModelMixin, mixins.ListModelMixin, viewsets.Ge
             return render(request, 'includes/product_list_partial.html', {'products': products})
         return super().list(request, *args, **kwargs)
     
-class DriverListAPI(
-    mixins.CreateModelMixin,
-    mixins.ListModelMixin,
-    viewsets.GenericViewSet
-):
-    queryset = Driver.objects.all()
+class DriverListAPI(viewsets.ModelViewSet):
+    queryset = Driver.objects.all().order_by('-id')
     serializer_class = DriverSerializer
     permission_classes = [IsAdminOrReadOnly]
 
@@ -112,8 +111,8 @@ class DriverListAPI(
         serializer = self.get_serializer(drivers, many=True)
         return Response(serializer.data)
     
-class AccessoryListAPI(mixins.CreateModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet):
-    queryset = Accessory.objects.all()
+class AccessoryListAPI(viewsets.ModelViewSet):
+    queryset = Accessory.objects.all().order_by('-id')
     serializer_class = AccessorySerializer
     permission_classes = [IsAdminOrReadOnly]
 

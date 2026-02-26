@@ -1,3 +1,4 @@
+
 import io
 import openpyxl
 
@@ -43,6 +44,8 @@ from apps.configurations.models import (
     ConfigurationAccessory,
     ConfigurationDriver
 )
+
+
 class BOQPDFBuilder:
     def __init__(self, boq, is_draft=False):
         self.boq = boq
@@ -151,8 +154,27 @@ class BOQPDFBuilder:
     # --------------------------------------------------
     # Main Builder
     # --------------------------------------------------
-    def build(self):
+    def _sr_cell(self, left_text="", right_text=""):
+        inner = Table(
+            [[
+                Paragraph(str(left_text), self.style_normal),
+                Paragraph(str(right_text), self.style_normal)
+            ]],
+            colWidths=[25, 25]  # Adjust if needed
+        )
 
+        inner.setStyle(TableStyle([
+            ('ALIGN', (0, 0), (0, 0), 'LEFT'),
+            ('ALIGN', (1, 0), (1, 0), 'RIGHT'),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 0),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+            ('TOPPADDING', (0, 0), (-1, -1), 0),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+        ]))
+
+        return inner
+    def build(self):
 
         doc = SimpleDocTemplate(
             self.buffer,
@@ -165,13 +187,11 @@ class BOQPDFBuilder:
 
         elements = []
 
-        # Fetch cumulative items
         all_items = BOQItem.objects.filter(
             boq__project=self.boq.project,
             boq__version__lte=self.boq.version
         ).select_related("area", "product", "driver", "accessory")
 
-        # Merge identical items
         grouped = defaultdict(lambda: {
             "qty": Decimal(0),
             "total": Decimal(0),
@@ -190,7 +210,6 @@ class BOQPDFBuilder:
             grouped[key]["total"] += Decimal(item.final_price or 0)
             grouped[key]["sample"] = item
 
-        # Organize by area
         area_map = defaultdict(list)
         for data in grouped.values():
             area_map[data["sample"].area].append(data)
@@ -206,8 +225,7 @@ class BOQPDFBuilder:
             elements.append(Spacer(1, 5))
 
             table_data = [[
-                "Sr No",
-                "Sub Sr No",
+                "#",
                 "Image",
                 "Item Details",
                 "Qty",
@@ -222,6 +240,7 @@ class BOQPDFBuilder:
             area_gst_total = Decimal(0)
             area_final_total = Decimal(0)
             area_qty_total = Decimal(0)
+
             products = [d for d in items if d["sample"].item_type == "PRODUCT"]
             subitems = [d for d in items if d["sample"].item_type != "PRODUCT"]
 
@@ -236,21 +255,19 @@ class BOQPDFBuilder:
                 gst_percent = Decimal("18")
 
                 rate = line_total / qty if qty > 0 else Decimal("0")
-
                 subtotal = line_total
-
                 gst_amount = subtotal * gst_percent / 100
-
-                new_total = subtotal + gst_amount
                 final_total = subtotal + gst_amount
+
                 area_qty_total += qty
                 area_subtotal += subtotal
                 area_gst_total += gst_amount
-                area_final_total += final_total     
+                area_final_total += final_total
+                area_total += final_total
 
                 product = item.product
 
-                details = f"<b>{product.order_code}</b><br/>{product.make} | {product.wattage}W | {product.cct_kelvin}K | {product.beam_angle_degree}°"
+                details = f"<b>{product.order_code}</b><br/>{product.make} | {product.wattage}W"
 
                 img = ""
                 if product.visual_image:
@@ -261,24 +278,20 @@ class BOQPDFBuilder:
 
                 # Product Row
                 table_data.append([
-                        str(product_counter),
-                        "",
-                        img,
-                        Paragraph(details, self.style_normal),
-                        str(qty),
-                        "Nos",
-                        self._format_currency(rate),      # Rate = existing unit total
-                        f"{gst_percent}%",                # Show GST %
-                        self._format_currency(final_total)  # Total = subtotal + GST
-                    ])
-
-                area_total += new_total
+                    self._sr_cell(product_counter, ""),
+                    img,
+                    Paragraph(details, self.style_normal),
+                    str(qty),
+                    "Nos",
+                    self._format_currency(rate),
+                    f"{gst_percent}%",
+                    self._format_currency(final_total)
+                ])
 
                 # Sub rows
                 sub_counter = 1
 
                 for sdata in subitems:
-
                     sitem = sdata["sample"]
 
                     if sitem.parent_product_id == item.product_id:
@@ -286,68 +299,65 @@ class BOQPDFBuilder:
                         sqty = sdata["qty"]
                         stotal = sdata["total"]
 
-                        gst_percent = Decimal("18")
-
                         srate = stotal / sqty if sqty > 0 else Decimal("0")
-
                         ssubtotal = stotal
-
                         sgst_amount = ssubtotal * gst_percent / 100
                         sfinal_total = ssubtotal + sgst_amount
-                        snew_total = ssubtotal + sgst_amount
+
                         area_qty_total += sqty
                         area_subtotal += ssubtotal
                         area_gst_total += sgst_amount
                         area_final_total += sfinal_total
+                        area_total += sfinal_total
 
                         if sitem.item_type == "DRIVER":
                             obj = sitem.driver
-                            sdesc = f" {obj.driver_make} {obj.driver_code}"
+                            sdesc = f"{obj.driver_make} {obj.driver_code}"
                         else:
                             obj = sitem.accessory
-                            sdesc = f" {obj.accessory_name}"
+                            sdesc = f"{obj.accessory_name}"
 
                         table_data.append([
-                            "",
-                            f"{product_counter}.{sub_counter}",
+                            self._sr_cell("", f"{product_counter}.{sub_counter}"),
                             "",
                             Paragraph(sdesc, self.style_normal),
                             str(sqty),
-                            "Nos",  
+                            "Nos",
                             self._format_currency(srate),
                             f"{gst_percent}%",
                             self._format_currency(sfinal_total)
                         ])
 
-                        area_total += snew_total
                         sub_counter += 1
 
                 product_counter += 1
 
-            # Area Subtotal
+            # Area Total Row
             table_data.append([
-    "", "", "", "Area Total",
-      str(int(area_qty_total)), "",
-
-    self._format_currency(area_subtotal),
-    self._format_currency(area_gst_total),
-    self._format_currency(area_final_total)
-])
+                "",
+                "",
+                Paragraph("<b>Area Total</b>", self.style_normal),
+                str(int(area_qty_total)),
+                "",
+                self._format_currency(area_subtotal),
+                # self._format_currency(area_gst_total),
+                Paragraph("<b>Total</b>", self.style_normal),
+                self._format_currency(area_final_total)
+            ])
 
             usable_width = doc.width
 
             table = Table(
                 table_data,
                 colWidths=[
-                    usable_width * 0.05,  # Sr No
-                    usable_width * 0.07,  # Sub Sr No
-                    usable_width * 0.08,  # Image
-                    usable_width * 0.28,  # Details
-                    usable_width * 0.07,  # Qty
-                    usable_width * 0.07,  # Unit
-                    usable_width * 0.10,  # Rate
-                    usable_width * 0.10,  # GST
-                    usable_width * 0.18,  # Total
+                    usable_width * 0.08,
+                    usable_width * 0.08,
+                    usable_width * 0.32,
+                    usable_width * 0.07,
+                    usable_width * 0.07,
+                    usable_width * 0.10,
+                    usable_width * 0.10,
+                    usable_width * 0.18,
                 ],
                 repeatRows=1,
                 hAlign="CENTER"
@@ -358,20 +368,9 @@ class BOQPDFBuilder:
                 ('FONTNAME', (0, 0), (-1, -1), 'DejaVu'),
                 ('FONTSIZE', (0, 0), (-1, 0), 10),
                 ('FONTSIZE', (0, 1), (-1, -1), 9),
-
-                ('ALIGN', (4, 1), (-1, -1), 'RIGHT'),
+                ('ALIGN', (3, 1), (-1, -1), 'RIGHT'),
                 ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-
-                ('LEFTPADDING', (0, 0), (-1, -1), 6),
-                ('RIGHTPADDING', (0, 0), (-1, -1), 6),
-                ('TOPPADDING', (0, 0), (-1, -1), 5),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
-
-                ('ROWBACKGROUNDS', (0, 1), (-1, -2),
-                [colors.white, colors.HexColor("#F7F7F7")]),
-
                 ('GRID', (0, 0), (-1, -1), 0.4, colors.grey),
-
                 ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor("#EFEFEF")),
             ]))
 
@@ -402,6 +401,8 @@ class BOQPDFBuilder:
         filename = f"{self.boq.project.name}_V{self.boq.version}_{self.boq.status}.pdf"
         response["Content-Disposition"] = f'attachment; filename="{filename}"'
         return response
+
+
 @transaction.atomic
 def generate_boq(project, user, area_id=None, subarea_id=None):
 
@@ -463,7 +464,11 @@ def generate_boq(project, user, area_id=None, subarea_id=None):
         version=next_version,
         created_by=user,
         status="DRAFT",
-        source_configuration_version=next_version
+        source_configuration_version=next_version,
+
+        # 🔥 SNAPSHOT CURRENCY
+        currency=project.currency,
+        exchange_rate=project.exchange_rate
     )
 
     # -----------------------------

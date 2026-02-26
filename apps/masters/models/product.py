@@ -1,6 +1,7 @@
 from django.db import models
 import random
 from decimal import Decimal
+from django.core.exceptions import ValidationError
 
 
 class Product(models.Model):
@@ -44,15 +45,16 @@ class Product(models.Model):
     warranty_years = models.IntegerField(null=True, blank=True)
 
     website_link = models.URLField(null=True, blank=True)
-    visual_image = models.ImageField(upload_to='lighting_specs/images/', null=True, blank=True)
-    illustrative_details = models.ImageField(upload_to='lighting_specs/images/', null=True, blank=True)
-    photometrics = models.ImageField(upload_to='lighting_specs/images/', null=True, blank=True)
+    visual_image = models.ImageField(upload_to='lighting_specs/visual/', null=True, blank=True)
+    illustrative_details = models.ImageField(upload_to='lighting_specs/illustrative/', null=True, blank=True)
+    photometrics = models.ImageField(upload_to='lighting_specs/photometrics/', null=True, blank=True)
+
 
     base_price = models.DecimalField(
         max_digits= 10,
         decimal_places= 2,
         # default= Decimal("1.00")
-        default= random.randint(1,99)
+        default=Decimal("0.00")
     )
     DRIVER_INTEGRATION_CHOICES = [
         ('INTEGRATED', 'Integrated Driver'),
@@ -82,5 +84,23 @@ class Product(models.Model):
         default='CC'
     )
     
+
+    def clean(self):
+        # Electrical validation
+        if self.electrical_type == "CC" and not self.op_current:
+            raise ValidationError(
+                "CC product must define operating current (op_current)."
+            )
+
+        if self.electrical_type == "CV" and not self.op_voltage:
+            raise ValidationError(
+                "CV product must define operating voltage (op_voltage)."
+            )
+
+
+    def save(self, *args, **kwargs):
+        self.full_clean()  # triggers clean()
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"{self.make} - {self.order_code}"
