@@ -1,0 +1,4149 @@
+openapi: 3.0.3
+info:
+  title: Lighting ERP API
+  version: 1.0.0
+  description: ERP backend for Lighting projects, BOQ, and audit
+paths:
+  /api/auth/login/:
+    post:
+      operationId: auth_login_create
+      description: |-
+        Takes a set of user credentials and returns an access and refresh JSON web
+        token pair to prove the authentication of those credentials.
+      tags:
+      - Auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPair'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPair'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPair'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenObtainPair'
+          description: ''
+  /api/auth/refresh/:
+    post:
+      operationId: auth_refresh_create
+      description: |-
+        Takes a refresh type JSON web token and returns an access type JSON web
+        token if the refresh token is valid.
+      tags:
+      - Auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRefresh'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenRefresh'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenRefresh'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenRefresh'
+          description: ''
+  /api/boq/apply-margin/{boq_id}/:
+    post:
+      operationId: boq_apply_margin_create
+      parameters:
+      - in: path
+        name: boq_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - boq
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/boq/approve/{boq_id}/:
+    post:
+      operationId: boq_approve_create
+      parameters:
+      - in: path
+        name: boq_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - boq
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/boq/export/excel/{boq_id}/:
+    get:
+      operationId: boq_export_excel_retrieve
+      parameters:
+      - in: path
+        name: boq_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - boq
+      responses:
+        '200':
+          description: No response body
+  /api/boq/export/pdf/{boq_id}/:
+    get:
+      operationId: boq_export_pdf_retrieve
+      parameters:
+      - in: path
+        name: boq_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - boq
+      responses:
+        '200':
+          description: No response body
+  /api/boq/generate/{project_id}/:
+    post:
+      operationId: boq_generate_create
+      parameters:
+      - in: path
+        name: project_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - boq
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BOQ'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/BOQ'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/BOQ'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BOQ'
+          description: ''
+  /api/boq/items/:
+    get:
+      operationId: boq_items_list
+      parameters:
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - boq
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BOQItem'
+          description: ''
+    post:
+      operationId: boq_items_create
+      tags:
+      - boq
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BOQItem'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/BOQItem'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/BOQItem'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BOQItem'
+          description: ''
+  /api/boq/items/{boq_item_id}/price/:
+    patch:
+      operationId: boq_items_price_partial_update
+      description: Override unit price of BOQ item (Only DRAFT BOQ allowed)
+      parameters:
+      - in: path
+        name: boq_item_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - boq
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedBOQItemPriceUpdate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedBOQItemPriceUpdate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedBOQItemPriceUpdate'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BOQItemPriceUpdate'
+          description: ''
+        '400':
+          description: No response body
+  /api/boq/items/{id}/:
+    get:
+      operationId: boq_items_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this boq item.
+        required: true
+      tags:
+      - boq
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BOQItem'
+          description: ''
+    put:
+      operationId: boq_items_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this boq item.
+        required: true
+      tags:
+      - boq
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BOQItem'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/BOQItem'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/BOQItem'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BOQItem'
+          description: ''
+    patch:
+      operationId: boq_items_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this boq item.
+        required: true
+      tags:
+      - boq
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedBOQItem'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedBOQItem'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedBOQItem'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BOQItem'
+          description: ''
+    delete:
+      operationId: boq_items_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this boq item.
+        required: true
+      tags:
+      - boq
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/boq/summary/{project_id}/:
+    get:
+      operationId: boq_summary_retrieve
+      description: Project-wise BOQ summary (latest BOQ)
+      parameters:
+      - in: path
+        name: project_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - boq
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/boq/summary/detail/{boq_id}/:
+    get:
+      operationId: boq_summary_detail_retrieve
+      description: Specific BOQ summary by ID (CUMULATIVE)
+      parameters:
+      - in: path
+        name: boq_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - boq
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/boq/versions/{project_id}/:
+    get:
+      operationId: boq_versions_retrieve
+      description: |-
+        List all BOQ versions for a project.
+        MANDATORY ENDPOINT CHECK.
+      parameters:
+      - in: path
+        name: project_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - boq
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/common/audit/logs/:
+    get:
+      operationId: common_audit_logs_retrieve
+      description: ERP Audit Logs - Contextual filtering by model (product, project,
+        boq)
+      tags:
+      - common
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/common/me/:
+    get:
+      operationId: common_me_retrieve
+      tags:
+      - common
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/configurations/:
+    get:
+      operationId: configurations_list
+      parameters:
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - configurations
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LightingConfiguration'
+          description: ''
+    post:
+      operationId: configurations_create
+      tags:
+      - configurations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LightingConfiguration'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LightingConfiguration'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LightingConfiguration'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LightingConfiguration'
+          description: ''
+  /api/configurations/{id}/:
+    get:
+      operationId: configurations_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this lighting configuration.
+        required: true
+      tags:
+      - configurations
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LightingConfiguration'
+          description: ''
+    put:
+      operationId: configurations_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this lighting configuration.
+        required: true
+      tags:
+      - configurations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LightingConfiguration'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LightingConfiguration'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LightingConfiguration'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LightingConfiguration'
+          description: ''
+    patch:
+      operationId: configurations_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this lighting configuration.
+        required: true
+      tags:
+      - configurations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedLightingConfiguration'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedLightingConfiguration'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedLightingConfiguration'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LightingConfiguration'
+          description: ''
+    delete:
+      operationId: configurations_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this lighting configuration.
+        required: true
+      tags:
+      - configurations
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/configurations/by-area/{area_id}/:
+    get:
+      operationId: configurations_by_area_retrieve
+      parameters:
+      - in: path
+        name: area_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - configurations
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LightingConfiguration'
+          description: ''
+  /api/configurations/by-project/{project_id}/:
+    get:
+      operationId: configurations_by_project_retrieve
+      description: |-
+        Returns active configuration for project-level BOQ.
+        Used when project.inquiry_type = PROJECT_LEVEL
+      parameters:
+      - in: path
+        name: project_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - configurations
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LightingConfiguration'
+          description: ''
+  /api/configurations/by-subarea/{subarea_id}/:
+    get:
+      operationId: configurations_by_subarea_retrieve
+      parameters:
+      - in: path
+        name: subarea_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - configurations
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LightingConfiguration'
+          description: ''
+  /api/configurations/compatibility/:
+    post:
+      operationId: configurations_compatibility_create
+      description: |-
+        ERP-Grade Compatibility Endpoint
+
+        POST /api/configurations/compatibility/
+
+        Validates and returns only drivers and accessories compatible with ALL selected products.
+      tags:
+      - configurations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LightingConfiguration'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LightingConfiguration'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LightingConfiguration'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LightingConfiguration'
+          description: ''
+  /api/configurations/compatibility/product/{product_id}/:
+    get:
+      operationId: configurations_compatibility_product_retrieve
+      description: ERP-Grade Single Product Compatibility Endpoint
+      parameters:
+      - in: path
+        name: product_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - configurations
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LightingConfiguration'
+          description: ''
+  /api/configurations/configuration-accessories/:
+    get:
+      operationId: configurations_configuration_accessories_list
+      parameters:
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - configurations
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ConfigurationAccessory'
+          description: ''
+    post:
+      operationId: configurations_configuration_accessories_create
+      tags:
+      - configurations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfigurationAccessory'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ConfigurationAccessory'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ConfigurationAccessory'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigurationAccessory'
+          description: ''
+  /api/configurations/configuration-accessories/{id}/:
+    get:
+      operationId: configurations_configuration_accessories_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this configuration accessory.
+        required: true
+      tags:
+      - configurations
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigurationAccessory'
+          description: ''
+    put:
+      operationId: configurations_configuration_accessories_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this configuration accessory.
+        required: true
+      tags:
+      - configurations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfigurationAccessory'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ConfigurationAccessory'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ConfigurationAccessory'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigurationAccessory'
+          description: ''
+    patch:
+      operationId: configurations_configuration_accessories_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this configuration accessory.
+        required: true
+      tags:
+      - configurations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedConfigurationAccessory'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedConfigurationAccessory'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedConfigurationAccessory'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigurationAccessory'
+          description: ''
+    delete:
+      operationId: configurations_configuration_accessories_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this configuration accessory.
+        required: true
+      tags:
+      - configurations
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/configurations/configuration-drivers/:
+    get:
+      operationId: configurations_configuration_drivers_list
+      parameters:
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - configurations
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ConfigurationDriver'
+          description: ''
+    post:
+      operationId: configurations_configuration_drivers_create
+      tags:
+      - configurations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfigurationDriver'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ConfigurationDriver'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ConfigurationDriver'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigurationDriver'
+          description: ''
+  /api/configurations/configuration-drivers/{id}/:
+    get:
+      operationId: configurations_configuration_drivers_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this configuration driver.
+        required: true
+      tags:
+      - configurations
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigurationDriver'
+          description: ''
+    put:
+      operationId: configurations_configuration_drivers_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this configuration driver.
+        required: true
+      tags:
+      - configurations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfigurationDriver'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ConfigurationDriver'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ConfigurationDriver'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigurationDriver'
+          description: ''
+    patch:
+      operationId: configurations_configuration_drivers_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this configuration driver.
+        required: true
+      tags:
+      - configurations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedConfigurationDriver'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedConfigurationDriver'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedConfigurationDriver'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigurationDriver'
+          description: ''
+    delete:
+      operationId: configurations_configuration_drivers_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this configuration driver.
+        required: true
+      tags:
+      - configurations
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/configurations/save_batch/:
+    post:
+      operationId: configurations_save_batch_create
+      tags:
+      - configurations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LightingConfiguration'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LightingConfiguration'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LightingConfiguration'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LightingConfiguration'
+          description: ''
+  /api/masters/accessories/:
+    get:
+      operationId: masters_accessories_list
+      parameters:
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - masters
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Accessory'
+          description: ''
+    post:
+      operationId: masters_accessories_create
+      tags:
+      - masters
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Accessory'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Accessory'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Accessory'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Accessory'
+          description: ''
+  /api/masters/accessories/{id}/:
+    get:
+      operationId: masters_accessories_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this accessory.
+        required: true
+      tags:
+      - masters
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Accessory'
+          description: ''
+    put:
+      operationId: masters_accessories_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this accessory.
+        required: true
+      tags:
+      - masters
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Accessory'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Accessory'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Accessory'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Accessory'
+          description: ''
+    patch:
+      operationId: masters_accessories_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this accessory.
+        required: true
+      tags:
+      - masters
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedAccessory'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedAccessory'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedAccessory'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Accessory'
+          description: ''
+    delete:
+      operationId: masters_accessories_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this accessory.
+        required: true
+      tags:
+      - masters
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/masters/accessories/compatible/:
+    get:
+      operationId: masters_accessories_compatible_retrieve
+      tags:
+      - masters
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Accessory'
+          description: ''
+  /api/masters/drivers/:
+    get:
+      operationId: masters_drivers_list
+      parameters:
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - masters
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Driver'
+          description: ''
+    post:
+      operationId: masters_drivers_create
+      tags:
+      - masters
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Driver'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Driver'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Driver'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Driver'
+          description: ''
+  /api/masters/drivers/{id}/:
+    get:
+      operationId: masters_drivers_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this driver.
+        required: true
+      tags:
+      - masters
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Driver'
+          description: ''
+    put:
+      operationId: masters_drivers_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this driver.
+        required: true
+      tags:
+      - masters
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Driver'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Driver'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Driver'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Driver'
+          description: ''
+    patch:
+      operationId: masters_drivers_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this driver.
+        required: true
+      tags:
+      - masters
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedDriver'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedDriver'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedDriver'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Driver'
+          description: ''
+    delete:
+      operationId: masters_drivers_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this driver.
+        required: true
+      tags:
+      - masters
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/masters/drivers/compatible/:
+    get:
+      operationId: masters_drivers_compatible_retrieve
+      tags:
+      - masters
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Driver'
+          description: ''
+  /api/masters/products/:
+    get:
+      operationId: masters_products_list
+      parameters:
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - masters
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Product'
+          description: ''
+    post:
+      operationId: masters_products_create
+      tags:
+      - masters
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Product'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Product'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+          description: ''
+  /api/masters/products/{prod_id}/:
+    get:
+      operationId: masters_products_retrieve
+      parameters:
+      - in: path
+        name: prod_id
+        schema:
+          type: integer
+        description: A unique integer value identifying this product.
+        required: true
+      tags:
+      - masters
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+          description: ''
+    put:
+      operationId: masters_products_update
+      parameters:
+      - in: path
+        name: prod_id
+        schema:
+          type: integer
+        description: A unique integer value identifying this product.
+        required: true
+      tags:
+      - masters
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Product'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Product'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+          description: ''
+    patch:
+      operationId: masters_products_partial_update
+      parameters:
+      - in: path
+        name: prod_id
+        schema:
+          type: integer
+        description: A unique integer value identifying this product.
+        required: true
+      tags:
+      - masters
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedProduct'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedProduct'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+          description: ''
+    delete:
+      operationId: masters_products_destroy
+      parameters:
+      - in: path
+        name: prod_id
+        schema:
+          type: integer
+        description: A unique integer value identifying this product.
+        required: true
+      tags:
+      - masters
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/permissions/:
+    get:
+      operationId: permissions_list
+      parameters:
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - permissions
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Permission'
+          description: ''
+  /api/permissions/{id}/:
+    get:
+      operationId: permissions_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this permission.
+        required: true
+      tags:
+      - permissions
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Permission'
+          description: ''
+  /api/projects/areas/:
+    get:
+      operationId: projects_areas_list
+      parameters:
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - projects
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Area'
+          description: ''
+    post:
+      operationId: projects_areas_create
+      tags:
+      - projects
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Area'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Area'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Area'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Area'
+          description: ''
+  /api/projects/areas/{id}/:
+    get:
+      operationId: projects_areas_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this area.
+        required: true
+      tags:
+      - projects
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Area'
+          description: ''
+    put:
+      operationId: projects_areas_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this area.
+        required: true
+      tags:
+      - projects
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Area'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Area'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Area'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Area'
+          description: ''
+    patch:
+      operationId: projects_areas_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this area.
+        required: true
+      tags:
+      - projects
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedArea'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedArea'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedArea'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Area'
+          description: ''
+    delete:
+      operationId: projects_areas_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this area.
+        required: true
+      tags:
+      - projects
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/projects/areas/{id}/subareas/:
+    get:
+      operationId: projects_areas_subareas_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this area.
+        required: true
+      tags:
+      - projects
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Area'
+          description: ''
+    post:
+      operationId: projects_areas_subareas_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this area.
+        required: true
+      tags:
+      - projects
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Area'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Area'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Area'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Area'
+          description: ''
+  /api/projects/projects/:
+    get:
+      operationId: projects_projects_list
+      parameters:
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - projects
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Project'
+          description: ''
+    post:
+      operationId: projects_projects_create
+      tags:
+      - projects
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Project'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Project'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Project'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+          description: ''
+  /api/projects/projects/{id}/:
+    get:
+      operationId: projects_projects_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this project.
+        required: true
+      tags:
+      - projects
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+          description: ''
+    put:
+      operationId: projects_projects_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this project.
+        required: true
+      tags:
+      - projects
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Project'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Project'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Project'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+          description: ''
+    patch:
+      operationId: projects_projects_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this project.
+        required: true
+      tags:
+      - projects
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedProject'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedProject'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedProject'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+          description: ''
+    delete:
+      operationId: projects_projects_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this project.
+        required: true
+      tags:
+      - projects
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/projects/projects/{id}/areas/:
+    get:
+      operationId: projects_projects_areas_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this project.
+        required: true
+      tags:
+      - projects
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+          description: ''
+    post:
+      operationId: projects_projects_areas_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this project.
+        required: true
+      tags:
+      - projects
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Project'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Project'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Project'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+          description: ''
+  /api/projects/search/:
+    get:
+      operationId: projects_search_retrieve
+      tags:
+      - projects
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/projects/subareas/:
+    get:
+      operationId: projects_subareas_list
+      parameters:
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - projects
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SubArea'
+          description: ''
+    post:
+      operationId: projects_subareas_create
+      tags:
+      - projects
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubArea'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SubArea'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SubArea'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubArea'
+          description: ''
+  /api/projects/subareas/{id}/:
+    get:
+      operationId: projects_subareas_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this sub area.
+        required: true
+      tags:
+      - projects
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubArea'
+          description: ''
+    put:
+      operationId: projects_subareas_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this sub area.
+        required: true
+      tags:
+      - projects
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubArea'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SubArea'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SubArea'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubArea'
+          description: ''
+    patch:
+      operationId: projects_subareas_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this sub area.
+        required: true
+      tags:
+      - projects
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedSubArea'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedSubArea'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedSubArea'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubArea'
+          description: ''
+    delete:
+      operationId: projects_subareas_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this sub area.
+        required: true
+      tags:
+      - projects
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/roles/:
+    get:
+      operationId: roles_list
+      parameters:
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - roles
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Role'
+          description: ''
+    post:
+      operationId: roles_create
+      tags:
+      - roles
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Role'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Role'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Role'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Role'
+          description: ''
+  /api/roles/{id}/:
+    get:
+      operationId: roles_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this group.
+        required: true
+      tags:
+      - roles
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Role'
+          description: ''
+    put:
+      operationId: roles_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this group.
+        required: true
+      tags:
+      - roles
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Role'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Role'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Role'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Role'
+          description: ''
+    patch:
+      operationId: roles_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this group.
+        required: true
+      tags:
+      - roles
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedRole'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedRole'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedRole'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Role'
+          description: ''
+    delete:
+      operationId: roles_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this group.
+        required: true
+      tags:
+      - roles
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/roles/{id}/assign-permissions/:
+    post:
+      operationId: roles_assign_permissions_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this group.
+        required: true
+      tags:
+      - roles
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Role'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Role'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Role'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Role'
+          description: ''
+  /api/roles/{id}/permissions/:
+    get:
+      operationId: roles_permissions_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this group.
+        required: true
+      tags:
+      - roles
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Role'
+          description: ''
+    post:
+      operationId: roles_permissions_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this group.
+        required: true
+      tags:
+      - roles
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Role'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Role'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Role'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Role'
+          description: ''
+  /api/users/:
+    get:
+      operationId: users_list
+      parameters:
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - users
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+          description: ''
+    post:
+      operationId: users_create
+      tags:
+      - users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/User'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/User'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+  /api/users/{id}/:
+    get:
+      operationId: users_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this user.
+        required: true
+      tags:
+      - users
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+    put:
+      operationId: users_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this user.
+        required: true
+      tags:
+      - users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/User'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/User'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+    patch:
+      operationId: users_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this user.
+        required: true
+      tags:
+      - users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedUser'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedUser'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedUser'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+    delete:
+      operationId: users_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this user.
+        required: true
+      tags:
+      - users
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/users/{id}/assign-role/:
+    post:
+      operationId: users_assign_role_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this user.
+        required: true
+      tags:
+      - users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/User'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/User'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+components:
+  schemas:
+    Accessory:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        accessory_name:
+          type: string
+          maxLength: 100
+        accessory_type:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+          nullable: true
+        compatible_mounting_styles:
+          description: 'Allowed values: SURFACE, RECESSED, INGROUND, TRACK MOUNTED'
+        min_diameter_mm:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        max_diameter_mm:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        compatible_ip_class:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        accessory_category:
+          $ref: '#/components/schemas/AccessoryCategoryEnum'
+        base_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+      required:
+      - accessory_category
+      - accessory_name
+      - accessory_type
+      - id
+    AccessoryCategoryEnum:
+      enum:
+      - MOUNTING
+      - OPTICAL
+      - DECORATIVE
+      - INSTALLATION
+      type: string
+      description: |-
+        * `MOUNTING` - Mounting
+        * `OPTICAL` - Optical
+        * `DECORATIVE` - Decorative
+        * `INSTALLATION` - Installation
+    AccessorySummary:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        accessory_name:
+          type: string
+          maxLength: 100
+        accessory_type:
+          type: string
+          maxLength: 100
+        base_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+      required:
+      - accessory_name
+      - accessory_type
+      - id
+    Area:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        area_code:
+          type: string
+          nullable: true
+          maxLength: 50
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        project:
+          type: integer
+      required:
+      - created_at
+      - id
+      - name
+      - project
+    AreaDetails:
+      type: object
+      properties:
+        landscape_area:
+          type: number
+          format: double
+          minimum: 0
+        interior_area:
+          type: number
+          format: double
+          minimum: 0
+        facade_area:
+          type: number
+          format: double
+          minimum: 0
+        unit:
+          $ref: '#/components/schemas/UnitEnum'
+    BOQ:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        version:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        status:
+          $ref: '#/components/schemas/BOQStatusEnum'
+        source_configuration_version:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        locked_at:
+          type: string
+          format: date-time
+          nullable: true
+        project:
+          type: integer
+        created_by:
+          type: integer
+          nullable: true
+      required:
+      - created_at
+      - id
+      - project
+      - version
+    BOQItem:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        item_type:
+          $ref: '#/components/schemas/ItemTypeEnum'
+        quantity:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        unit_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        master_price:
+          type: string
+          readOnly: true
+        markup_pct:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+        final_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        area_name:
+          type: string
+          readOnly: true
+        product_details:
+          type: string
+          readOnly: true
+        driver_details:
+          type: string
+          readOnly: true
+        accessory_details:
+          type: string
+          readOnly: true
+      required:
+      - accessory_details
+      - area_name
+      - driver_details
+      - final_price
+      - id
+      - item_type
+      - master_price
+      - product_details
+      - quantity
+      - unit_price
+    BOQItemPriceUpdate:
+      type: object
+      description: |-
+        Serializer for updating BOQItem unit_price (price override).
+        Only allows updates when BOQ status is DRAFT.
+        Recalculates final_price after override.
+      properties:
+        unit_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+      required:
+      - unit_price
+    BOQStatusEnum:
+      enum:
+      - DRAFT
+      - COMMERCIAL_APPROVED
+      - FINAL
+      type: string
+      description: |-
+        * `DRAFT` - Draft
+        * `COMMERCIAL_APPROVED` - Commercial Approved
+        * `FINAL` - Final
+    BlankEnum:
+      enum:
+      - ''
+    ConfigurationAccessory:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        accessory_name:
+          type: string
+          readOnly: true
+        accessory_type:
+          type: string
+          readOnly: true
+        quantity:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        configuration:
+          type: integer
+        accessory:
+          type: integer
+      required:
+      - accessory
+      - accessory_name
+      - accessory_type
+      - configuration
+      - created_at
+      - id
+      - quantity
+    ConfigurationAccessoryNested:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        accessory:
+          type: integer
+        accessory_detail:
+          allOf:
+          - $ref: '#/components/schemas/AccessorySummary'
+          readOnly: true
+        quantity:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+      required:
+      - accessory
+      - accessory_detail
+      - id
+      - quantity
+    ConfigurationDriver:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        driver_name:
+          type: string
+          readOnly: true
+        constant_type:
+          type: string
+          readOnly: true
+        quantity:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        configuration:
+          type: integer
+        driver:
+          type: integer
+      required:
+      - configuration
+      - constant_type
+      - created_at
+      - driver
+      - driver_name
+      - id
+      - quantity
+    ConfigurationDriverNested:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        driver:
+          type: integer
+        driver_detail:
+          allOf:
+          - $ref: '#/components/schemas/DriverSummary'
+          readOnly: true
+        quantity:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+      required:
+      - driver
+      - driver_detail
+      - id
+      - quantity
+    ConstantTypeEnum:
+      enum:
+      - CC
+      - CV
+      type: string
+      description: |-
+        * `CC` - Constant Current
+        * `CV` - Constant Voltage
+    ControlReadyEnum:
+      enum:
+      - NONE
+      - DALI
+      - 0-10V
+      type: string
+      description: |-
+        * `NONE` - None
+        * `DALI` - DALI
+        * `0-10V` - 0-10V
+    CurrencyEnum:
+      enum:
+      - INR
+      - USD
+      - EUR
+      - GBP
+      - THB
+      - AED
+      - CNY
+      type: string
+      description: |-
+        * `INR` - Indian Rupee
+        * `USD` - US Dollar
+        * `EUR` - Euro
+        * `GBP` - British Pound
+        * `THB` - Thai Baht
+        * `AED` - UAE Dirham
+        * `CNY` - Chinese Yuan
+    DimmableEnum:
+      enum:
+      - 'YES'
+      - 'NO'
+      type: string
+      description: |-
+        * `YES` - Yes
+        * `NO` - No
+    DimmingProtocolEnum:
+      enum:
+      - NONE
+      - DALI
+      - 0-10V
+      - 1-10V
+      - TRIAC
+      type: string
+      description: |-
+        * `NONE` - Non Dimmable
+        * `DALI` - DALI
+        * `0-10V` - 0-10V
+        * `1-10V` - 1-10V
+        * `TRIAC` - TRIAC
+    Driver:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        driver_code:
+          type: string
+          maxLength: 100
+        driver_make:
+          type: string
+          maxLength: 100
+        input_voltage_min:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        input_voltage_max:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        max_wattage:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        dimmable:
+          $ref: '#/components/schemas/DimmableEnum'
+        output_current_ma:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        output_voltage_min:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        output_voltage_max:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        constant_type:
+          $ref: '#/components/schemas/ConstantTypeEnum'
+        dimming_protocol:
+          $ref: '#/components/schemas/DimmingProtocolEnum'
+        ip_class:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        warranty_years:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        base_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+      required:
+      - driver_code
+      - driver_make
+      - id
+    DriverIntegrationEnum:
+      enum:
+      - INTEGRATED
+      - EXTERNAL
+      type: string
+      description: |-
+        * `INTEGRATED` - Integrated Driver
+        * `EXTERNAL` - External Driver
+    DriverSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        driver_code:
+          type: string
+          maxLength: 100
+        driver_make:
+          type: string
+          maxLength: 100
+        constant_type:
+          $ref: '#/components/schemas/ConstantTypeEnum'
+        dimming_protocol:
+          $ref: '#/components/schemas/DimmingProtocolEnum'
+        output_current_ma:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        output_voltage_min:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        output_voltage_max:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        max_wattage:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        ip_class:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        dimmable:
+          $ref: '#/components/schemas/DimmableEnum'
+        base_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+      required:
+      - driver_code
+      - driver_make
+      - id
+    ElectricalTypeEnum:
+      enum:
+      - CC
+      - CV
+      type: string
+      description: |-
+        * `CC` - Constant Current
+        * `CV` - Constant Voltage
+    EnvironmentEnum:
+      enum:
+      - INDOOR
+      - OUTDOOR
+      type: string
+      description: |-
+        * `INDOOR` - Indoor
+        * `OUTDOOR` - Outdoor
+    InquiryTypeEnum:
+      enum:
+      - AREA_WISE
+      - PROJECT_LEVEL
+      type: string
+      description: |-
+        * `AREA_WISE` - Inquiry with Areas & SubAreas
+        * `PROJECT_LEVEL` - Inquiry at Project Level
+    ItemTypeEnum:
+      enum:
+      - PRODUCT
+      - DRIVER
+      - ACCESSORY
+      type: string
+      description: |-
+        * `PRODUCT` - Product
+        * `DRIVER` - Driver
+        * `ACCESSORY` - Accessory
+    LightingConfiguration:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        project:
+          type: integer
+          readOnly: true
+        area:
+          type: integer
+        subarea:
+          type: integer
+        product:
+          type: integer
+        product_detail:
+          allOf:
+          - $ref: '#/components/schemas/ProductSummary'
+          readOnly: true
+        quantity:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        drivers:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConfigurationDriverNested'
+          readOnly: true
+        accessories:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConfigurationAccessoryNested'
+          readOnly: true
+        configuration_version:
+          type: integer
+          readOnly: true
+          default: 1
+        is_active:
+          type: boolean
+          readOnly: true
+      required:
+      - accessories
+      - area
+      - configuration_version
+      - drivers
+      - id
+      - is_active
+      - product
+      - product_detail
+      - project
+      - quantity
+      - subarea
+    LocationMetadata:
+      type: object
+      properties:
+        address:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        country:
+          type: string
+    MountingStyleEnum:
+      enum:
+      - SURFACE
+      - RECESSED
+      - INGROUND
+      - TRACK MOUNTED
+      type: string
+      description: |-
+        * `SURFACE` - Surface Mounted
+        * `RECESSED` - Recessed
+        * `INGROUND` - Inground Mounted
+        * `TRACK MOUNTED` - Track Mounted
+    NullEnum:
+      enum:
+      - null
+    PatchedAccessory:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        accessory_name:
+          type: string
+          maxLength: 100
+        accessory_type:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+          nullable: true
+        compatible_mounting_styles:
+          description: 'Allowed values: SURFACE, RECESSED, INGROUND, TRACK MOUNTED'
+        min_diameter_mm:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        max_diameter_mm:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        compatible_ip_class:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        accessory_category:
+          $ref: '#/components/schemas/AccessoryCategoryEnum'
+        base_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+    PatchedArea:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        area_code:
+          type: string
+          nullable: true
+          maxLength: 50
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        project:
+          type: integer
+    PatchedBOQItem:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        item_type:
+          $ref: '#/components/schemas/ItemTypeEnum'
+        quantity:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        unit_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        master_price:
+          type: string
+          readOnly: true
+        markup_pct:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+        final_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        area_name:
+          type: string
+          readOnly: true
+        product_details:
+          type: string
+          readOnly: true
+        driver_details:
+          type: string
+          readOnly: true
+        accessory_details:
+          type: string
+          readOnly: true
+    PatchedBOQItemPriceUpdate:
+      type: object
+      description: |-
+        Serializer for updating BOQItem unit_price (price override).
+        Only allows updates when BOQ status is DRAFT.
+        Recalculates final_price after override.
+      properties:
+        unit_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+    PatchedConfigurationAccessory:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        accessory_name:
+          type: string
+          readOnly: true
+        accessory_type:
+          type: string
+          readOnly: true
+        quantity:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        configuration:
+          type: integer
+        accessory:
+          type: integer
+    PatchedConfigurationDriver:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        driver_name:
+          type: string
+          readOnly: true
+        constant_type:
+          type: string
+          readOnly: true
+        quantity:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        configuration:
+          type: integer
+        driver:
+          type: integer
+    PatchedDriver:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        driver_code:
+          type: string
+          maxLength: 100
+        driver_make:
+          type: string
+          maxLength: 100
+        input_voltage_min:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        input_voltage_max:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        max_wattage:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        dimmable:
+          $ref: '#/components/schemas/DimmableEnum'
+        output_current_ma:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        output_voltage_min:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        output_voltage_max:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        constant_type:
+          $ref: '#/components/schemas/ConstantTypeEnum'
+        dimming_protocol:
+          $ref: '#/components/schemas/DimmingProtocolEnum'
+        ip_class:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        warranty_years:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        base_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+    PatchedLightingConfiguration:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        project:
+          type: integer
+          readOnly: true
+        area:
+          type: integer
+        subarea:
+          type: integer
+        product:
+          type: integer
+        product_detail:
+          allOf:
+          - $ref: '#/components/schemas/ProductSummary'
+          readOnly: true
+        quantity:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        drivers:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConfigurationDriverNested'
+          readOnly: true
+        accessories:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConfigurationAccessoryNested'
+          readOnly: true
+        configuration_version:
+          type: integer
+          readOnly: true
+          default: 1
+        is_active:
+          type: boolean
+          readOnly: true
+    PatchedProduct:
+      type: object
+      properties:
+        prod_id:
+          type: integer
+          readOnly: true
+        make:
+          type: string
+          maxLength: 100
+        order_code:
+          type: string
+          nullable: true
+          maxLength: 100
+        luminaire_color_ral:
+          type: string
+          nullable: true
+          maxLength: 100
+        characteristics:
+          type: string
+          nullable: true
+        diameter_mm:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        length_mm:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        width_mm:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        height_mm:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        mounting_style:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/MountingStyleEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        beam_angle_degree:
+          type: string
+          nullable: true
+          maxLength: 100
+        ip_class:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        wattage:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+          nullable: true
+        op_voltage:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        op_current:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        lumen_output:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        cct_kelvin:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        cri_cci:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        lumen_efficency:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+          nullable: true
+        weight_kg:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,4}(?:\.\d{0,2})?$
+          nullable: true
+        warranty_years:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        website_link:
+          type: string
+          format: uri
+          nullable: true
+          maxLength: 200
+        visual_image:
+          type: string
+          format: uri
+          nullable: true
+        illustrative_details:
+          type: string
+          format: uri
+          nullable: true
+        photometrics:
+          type: string
+          format: uri
+          nullable: true
+        base_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        driver_integration:
+          $ref: '#/components/schemas/DriverIntegrationEnum'
+        cutout_diameter_mm:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        environment:
+          $ref: '#/components/schemas/EnvironmentEnum'
+        control_ready:
+          $ref: '#/components/schemas/ControlReadyEnum'
+        electrical_type:
+          $ref: '#/components/schemas/ElectricalTypeEnum'
+    PatchedProject:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 150
+        client_name:
+          type: string
+          maxLength: 150
+        project_code:
+          type: string
+          readOnly: true
+          nullable: true
+        inquiry_type:
+          allOf:
+          - $ref: '#/components/schemas/InquiryTypeEnum'
+          description: |-
+            Defines inquiry structure: area-wise or project-level
+
+            * `AREA_WISE` - Inquiry with Areas & SubAreas
+            * `PROJECT_LEVEL` - Inquiry at Project Level
+        location_metadata:
+          $ref: '#/components/schemas/LocationMetadata'
+        status:
+          $ref: '#/components/schemas/ProjectStatusEnum'
+        expected_completion_date:
+          type: string
+          format: date
+          nullable: true
+        refered_by:
+          type: string
+          nullable: true
+          maxLength: 150
+        segment_area:
+          $ref: '#/components/schemas/SegmentAreaEnum'
+        expecetd_mhr:
+          type: integer
+          maximum: 100000
+          minimum: 0
+          nullable: true
+        fee:
+          type: integer
+          maximum: 9999999999
+          minimum: 0
+          format: int64
+        currency:
+          $ref: '#/components/schemas/CurrencyEnum'
+        exchange_rate:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,6}(?:\.\d{0,6})?$
+        exchange_rate_locked:
+          type: boolean
+        exchange_rate_locked_at:
+          type: string
+          format: date-time
+          nullable: true
+        area_details:
+          $ref: '#/components/schemas/AreaDetails'
+        description:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+          maxLength: 1000
+        tags:
+          type: string
+          nullable: true
+          maxLength: 100
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        areas:
+          type: array
+          items:
+            $ref: '#/components/schemas/Area'
+          readOnly: true
+    PatchedRole:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 150
+    PatchedSubArea:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        area:
+          type: integer
+        name:
+          type: string
+          maxLength: 100
+        subarea_code:
+          type: string
+          readOnly: true
+          nullable: true
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedUser:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          title: Email address
+          maxLength: 254
+        is_active:
+          type: boolean
+          title: Active
+          description: Designates whether this user should be treated as active. Unselect
+            this instead of deleting accounts.
+        groups:
+          type: array
+          items:
+            type: string
+          readOnly: true
+    Permission:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 255
+        codename:
+          type: string
+          maxLength: 100
+        content_type:
+          type: string
+          readOnly: true
+      required:
+      - codename
+      - content_type
+      - id
+      - name
+    Product:
+      type: object
+      properties:
+        prod_id:
+          type: integer
+          readOnly: true
+        make:
+          type: string
+          maxLength: 100
+        order_code:
+          type: string
+          nullable: true
+          maxLength: 100
+        luminaire_color_ral:
+          type: string
+          nullable: true
+          maxLength: 100
+        characteristics:
+          type: string
+          nullable: true
+        diameter_mm:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        length_mm:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        width_mm:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        height_mm:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        mounting_style:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/MountingStyleEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        beam_angle_degree:
+          type: string
+          nullable: true
+          maxLength: 100
+        ip_class:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        wattage:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+          nullable: true
+        op_voltage:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        op_current:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        lumen_output:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        cct_kelvin:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        cri_cci:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        lumen_efficency:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+          nullable: true
+        weight_kg:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,4}(?:\.\d{0,2})?$
+          nullable: true
+        warranty_years:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        website_link:
+          type: string
+          format: uri
+          nullable: true
+          maxLength: 200
+        visual_image:
+          type: string
+          format: uri
+          nullable: true
+        illustrative_details:
+          type: string
+          format: uri
+          nullable: true
+        photometrics:
+          type: string
+          format: uri
+          nullable: true
+        base_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        driver_integration:
+          $ref: '#/components/schemas/DriverIntegrationEnum'
+        cutout_diameter_mm:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        environment:
+          $ref: '#/components/schemas/EnvironmentEnum'
+        control_ready:
+          $ref: '#/components/schemas/ControlReadyEnum'
+        electrical_type:
+          $ref: '#/components/schemas/ElectricalTypeEnum'
+      required:
+      - make
+      - prod_id
+    ProductSummary:
+      type: object
+      properties:
+        prod_id:
+          type: integer
+          readOnly: true
+        make:
+          type: string
+          maxLength: 100
+        order_code:
+          type: string
+          nullable: true
+          maxLength: 100
+        wattage:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+          nullable: true
+        lumen_output:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+      required:
+      - make
+      - prod_id
+    Project:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 150
+        client_name:
+          type: string
+          maxLength: 150
+        project_code:
+          type: string
+          readOnly: true
+          nullable: true
+        inquiry_type:
+          allOf:
+          - $ref: '#/components/schemas/InquiryTypeEnum'
+          description: |-
+            Defines inquiry structure: area-wise or project-level
+
+            * `AREA_WISE` - Inquiry with Areas & SubAreas
+            * `PROJECT_LEVEL` - Inquiry at Project Level
+        location_metadata:
+          $ref: '#/components/schemas/LocationMetadata'
+        status:
+          $ref: '#/components/schemas/ProjectStatusEnum'
+        expected_completion_date:
+          type: string
+          format: date
+          nullable: true
+        refered_by:
+          type: string
+          nullable: true
+          maxLength: 150
+        segment_area:
+          $ref: '#/components/schemas/SegmentAreaEnum'
+        expecetd_mhr:
+          type: integer
+          maximum: 100000
+          minimum: 0
+          nullable: true
+        fee:
+          type: integer
+          maximum: 9999999999
+          minimum: 0
+          format: int64
+        currency:
+          $ref: '#/components/schemas/CurrencyEnum'
+        exchange_rate:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,6}(?:\.\d{0,6})?$
+        exchange_rate_locked:
+          type: boolean
+        exchange_rate_locked_at:
+          type: string
+          format: date-time
+          nullable: true
+        area_details:
+          $ref: '#/components/schemas/AreaDetails'
+        description:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+          maxLength: 1000
+        tags:
+          type: string
+          nullable: true
+          maxLength: 100
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        areas:
+          type: array
+          items:
+            $ref: '#/components/schemas/Area'
+          readOnly: true
+      required:
+      - areas
+      - client_name
+      - created_at
+      - fee
+      - id
+      - name
+      - project_code
+    ProjectStatusEnum:
+      enum:
+      - INQUIRY
+      - ACTIVE
+      - COMPLETED
+      - ON_HOLD
+      type: string
+      description: |-
+        * `INQUIRY` - Inquiry
+        * `ACTIVE` - Active
+        * `COMPLETED` - Completed
+        * `ON_HOLD` - On Hold
+    Role:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 150
+      required:
+      - id
+      - name
+    SegmentAreaEnum:
+      enum:
+      - MASTER PLANNING
+      - COMMERCIAL
+      - PRIVATE RESIDENCE
+      - RESIDENTIAL TOWNSHIP
+      - LANDSCAPE
+      - FACADE
+      - HOSPITALITY
+      - HEALTH CARE
+      - PUBLIC SPACE
+      - SEZ
+      - SPECIAL/OTHERS
+      - INDUSTRIAL
+      - RETAIL
+      - INFRASTRUCTURE
+      - INSTITUTIONS
+      - MEMORIALS
+      - MALL/MULTIPLEX
+      - CLUB HOUSE
+      - TEMPLE/GURUDWARA/CHURCH
+      type: string
+      description: |-
+        * `MASTER PLANNING` - Master Planning
+        * `COMMERCIAL` - Commercial
+        * `PRIVATE RESIDENCE` - Private Residence
+        * `RESIDENTIAL TOWNSHIP` - Residential Township
+        * `LANDSCAPE` - Landscape
+        * `FACADE` - Facade
+        * `HOSPITALITY` - Hospitality
+        * `HEALTH CARE` - Health Care
+        * `PUBLIC SPACE` - Public Space
+        * `SEZ` - Sez
+        * `SPECIAL/OTHERS` - Special/Others
+        * `INDUSTRIAL` - Industrial
+        * `RETAIL` - Retail
+        * `INFRASTRUCTURE` - Infrastructure
+        * `INSTITUTIONS` - Instituions
+        * `MEMORIALS` - Memorials
+        * `MALL/MULTIPLEX` - Mall/Multiplex
+        * `CLUB HOUSE` - Club House
+        * `TEMPLE/GURUDWARA/CHURCH` - Temple/Gurudwara/Church
+    SubArea:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        area:
+          type: integer
+        name:
+          type: string
+          maxLength: 100
+        subarea_code:
+          type: string
+          readOnly: true
+          nullable: true
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - area
+      - created_at
+      - id
+      - name
+      - subarea_code
+    TokenObtainPair:
+      type: object
+      properties:
+        username:
+          type: string
+          writeOnly: true
+        password:
+          type: string
+          writeOnly: true
+        access:
+          type: string
+          readOnly: true
+        refresh:
+          type: string
+          readOnly: true
+      required:
+      - access
+      - password
+      - refresh
+      - username
+    TokenRefresh:
+      type: object
+      properties:
+        access:
+          type: string
+          readOnly: true
+        refresh:
+          type: string
+      required:
+      - access
+      - refresh
+    UnitEnum:
+      enum:
+      - sqft
+      - sqmt
+      - acre
+      type: string
+      description: |-
+        * `sqft` - sqft
+        * `sqmt` - sqmt
+        * `acre` - acre
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          title: Email address
+          maxLength: 254
+        is_active:
+          type: boolean
+          title: Active
+          description: Designates whether this user should be treated as active. Unselect
+            this instead of deleting accounts.
+        groups:
+          type: array
+          items:
+            type: string
+          readOnly: true
+      required:
+      - groups
+      - id
+      - username
+  securitySchemes:
+    jwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
