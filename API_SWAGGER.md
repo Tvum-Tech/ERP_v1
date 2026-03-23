@@ -373,13 +373,4 @@ Lighting ERP API – Built for scalable lighting design, configuration, and BOQ 
 - Client/demo-ready
 - Interview-ready
 
-
-
-If you want next, I can:
-- Generate **Postman collection**
-- Add **request/response examples for each endpoint**
-- Create **API testing checklist**
-- Build **frontend integration guide**
-
-Just tell me 👍
 ```
