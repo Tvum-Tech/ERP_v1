@@ -1,12 +1,5 @@
-Here is your **clean, properly formatted, copy-paste ready `README.md`** 👇
-(You can paste this directly into GitHub — formatting will render perfectly)
-
----
-
 ```markdown
 # 📘 Lighting ERP System (BOQ & Configuration Engine)
-
----
 
 ## 🚀 Overview
 
@@ -20,17 +13,11 @@ It enables engineers and business teams to:
 - Generate **version-controlled configurations**
 - Produce **audit-safe BOQ outputs**
 
----
-
 ## 🏗️ System Architecture
-
-```
 
 Project → Area → SubArea → Configuration → Products → Drivers/Accessories → BOQ
 
 ```
-
----
 
 ## 📦 Core Modules
 
@@ -50,7 +37,6 @@ Manages project hierarchy.
 - `subarea_code` (auto-generated)
 - Linked to Area
 
----
 
 ### 2. 💡 Configurations Module (Core Engine)
 
@@ -68,7 +54,6 @@ Handles lighting configurations with **versioning**.
 #### ConfigurationAccessory
 - Linked accessory + quantity
 
----
 
 ### 3. 📦 Masters Module (Product Intelligence)
 
@@ -95,19 +80,14 @@ Central repository for all product-related data.
 - Diameter range
 - IP compatibility
 
----
-
 ### 4. ⚙️ Compatibility Engine
 
 A **pure service layer** that determines compatibility.
 
 #### Functions
-```
 
 get_compatible_drivers(products)
 get_compatible_accessories(products)
-
-```
 
 #### Key Rules
 - Electrical compatibility (CC/CV)
@@ -117,18 +97,14 @@ get_compatible_accessories(products)
 - IP rating constraints
 - Intersection logic (**must support ALL products**)
 
----
 
 ### 5. 🔄 Versioning Engine
 
 Ensures **ERP-grade immutability and audit compliance**.
 
 #### Function
-```
 
 create_configuration_version()
-
-```
 
 #### Rules
 - Every save creates a **new version**
@@ -136,7 +112,6 @@ create_configuration_version()
 - No deletion allowed
 - Full traceability maintained
 
----
 
 ### 6. 📊 BOQ Module
 
@@ -152,36 +127,26 @@ Generates Bill of Quantities from configurations.
 - Immutable
 - Audit-safe
 
----
 
 ## 🌐 API Endpoints
 
 ### Configuration APIs
-```
 
 POST /api/configurations/save_batch/
 POST /api/configurations/compatibility/
 GET  /api/configurations/by-area/<area_id>/
 
-```
 
 ### Project Hierarchy
-```
 
 GET /api/projects/
 GET /api/areas/
 GET /api/subareas/
 
-```
-
 ### Product Filtering
-```
+
 
 POST /api/products/filter/
-
-```
-
----
 
 ## 🧠 Configuration Workflow
 
@@ -200,14 +165,12 @@ POST /api/products/filter/
    - Compatible Accessories
 7. Save Configuration → **New Version Created**
 
----
 
 ## 🔐 Permissions
 
 - `IsEditorOrReadOnly` → Default protection
 - `AllowAny` → Used for compatibility endpoints (calculation APIs)
 
----
 
 ## 🧾 Code Generation Strategy
 
@@ -223,7 +186,6 @@ All hierarchy levels use **auto-generated codes**:
 ✔ Unique  
 ✔ ERP-compliant  
 
----
 
 ## 🧪 Tech Stack
 
@@ -232,8 +194,6 @@ All hierarchy levels use **auto-generated codes**:
 - **Architecture:** Service-based ERP design  
 - **API:** RESTful  
 
----
-
 ## ⚠️ Important Notes
 
 - Do NOT delete configurations → use versioning
@@ -241,7 +201,6 @@ All hierarchy levels use **auto-generated codes**:
 - Migrations must always be applied after model changes
 - Designed for **scalability and audit compliance**
 
----
 
 ## 🚀 Future Enhancements
 
@@ -252,30 +211,9 @@ All hierarchy levels use **auto-generated codes**:
 - Role-based access control
 - Analytics & reporting dashboards
 
----
-
 ## 👨‍💻 Author
 
 Lighting ERP System – Built for scalable configuration, engineering validation, and BOQ automation.
 ```
 
----
 
-## ✅ Done
-
-You can now:
-
-* Paste this into `README.md`
-* Commit directly to GitHub
-* Use it in interviews / portfolio
-
----
-
-If you want next, I can:
-
-* Add **architecture diagram (image-based)**
-* Create **Swagger API docs**
-* Add **setup & installation section**
-* Make this **resume-ready project explanation**
-
-Just tell me 👍
