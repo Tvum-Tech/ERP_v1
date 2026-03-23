@@ -1,83 +1,175 @@
-# Lighting ERP – Backend (Django REST API)
+📘 ERP_v1 – Enterprise Resource Planning System
+📌 1. Project Overview
 
-This repository contains the **backend APIs** for the **Lighting ERP system**, built using **Django** and **Django REST Framework (DRF)**.
+ERP_v1 is a modular, scalable Enterprise Resource Planning system built using Django REST Framework and Vue.js, designed to manage multiple business domains such as CRM, HRM, Finance, and Inventory.
 
-This documentation is intended for:
-- Backend Developers
-- Frontend Developers (React / Angular / Vue)
-- QA / API Testers
+The system follows a Domain-Driven Design (DDD-inspired architecture) rather than traditional Django MVT, enabling better scalability, maintainability, and separation of concerns.
 
-It explains **how to set up, run, and test the project locally** after cloning from GitHub.
+🎯 Key Objectives
+Build a modular ERP platform
+Enable plug-and-play integrations (e.g., external CRM like HubSpot)
+Separate business logic from infrastructure
+Support scalable enterprise architecture
+🏗️ 2. System Architecture
+🔷 High-Level Architecture
+User → Frontend (Vue.js)
+→ Backend API (Django DRF)
+→ Business Logic Layer
+→ Repository Layer
+→ Database (PostgreSQL)
+🔷 Backend Architecture (DDD Inspired)
 
----
+Instead of Django’s default MVT, the system is structured into:
 
-## 📌 Prerequisites
+Core Layers:
+Layer Responsibility
+Domain Core business entities & rules
+Logic Business logic processing
+Repository Database interaction
+Handlers (Views) API endpoints
+Tests Unit & integration tests
 
-Before starting, ensure the following are installed on your system:
+👉 This separation allows:
 
-### Required
-- **Python 3.10+** (Recommended: 3.11)
-- **Git**
-- **pip** (Python package installer)
-- **Virtual Environment support** (standard `venv`)
+Clean code
+Easy scaling
+Replaceable infrastructure
+🔷 Request Flow
+Request → URL Router → View (Handler)
+→ Logic Layer
+→ Repository Layer
+→ Database
+→ Response → Client
+🔷 Advanced Design Feature
+🔥 Repository Factory Pattern
+Uses use_case_type
+Dynamically switches data source (e.g., DB vs external CRM)
 
-### Optional but Recommended
-- **VS Code** (with Python extension)
-- **Postman** or **Swagger UI** (for API testing)
-- **DB Browser for SQLite** (if using the default database)
+👉 Example:
 
+use_case_type=“default” → DB
+use_case_type=“hubspot” → External API
 
-### Verify Python Installation
-Open your terminal and check your version:
-```bash
-python --version
+✅ This enables plug-and-play integrations without changing views
 
-git clone [https://github.com/Tvum-Tech/backend_mvp_boq.git](https://github.com/Tvum-Tech/backend_mvp_boq.git)
-cd lighting_erp
+🧩 3. Project Structure
+ERP_v1/
+│
+├── core/
+│ ├── apps/
+│ │ ├── crm/
+│ │ ├── hrm/
+│ │ ├── fintech/
+│ │ └── common/
+│ │
+│ ├── frontend/
+│ │ ├── crm/
+│ │ ├── hrm/
+│ │
+│
+├── manage.py
+├── requirements.txt
+├── .env-example
 
-Create Virtual Environment
-Isolate project dependencies by creating a virtual environment.
+🛠️ 4. Technology Stack
+Backend
+Python
+Django
+Django REST Framework
+Pydantic (validation instead of DRF serializers)
+PostgreSQL
+Djoser (authentication)
+Swagger (API docs)
+Frontend
+Vue.js
+JavaScript
 
+⚙️ 5. Setup & Installation
+🔷 Backend Setup
+git clone https://github.com/Tvum-Tech/ERP_v1.git
+cd ERP_v1
 
-Windows:
---------------------------
-python -m venv venv
-venv\Scripts\activate
-
-
-Mac / Linux:
---------------------------
-python3 -m venv venv
-source venv/bin/activate
-
-
-Install Dependencies
--------------------------------
+cp .env-example .env
 pip install -r requirements.txt
-
-
-If requirements.txt is missing or fails, install the core packages manually:
-----------------------------------------------------------------------------------
-pip install django djangorestframework drf-spectacular pytest pytest-django
-
-
-Apply Migrations
-Initialize the database schema:
------------------------------------
-python manage.py makemigrations
 python manage.py migrate
-
-Running the Server
-Start the local development server:
----------------------------------------
 python manage.py runserver
+🔷 Frontend Setup
+cd core/frontend/crm
+npm install
+npm run serve
+🔷 Run Tests
+pytest
 
+📡 6. API Documentation
+Swagger UI:
+http://localhost:8000/api/v1/docs/
 
-The API will be accessible at: 👉 http://127.0.0.1:8000/
+👉 APIs are auto-documented using OpenAPI/Swagger.
 
-📚 API Documentation
-This project uses drf-spectacular to generate automatic API documentation. Once the server is running, you can access:
+🧱 7. Functional Modules (Roadmap)
+Module Status
+CRM (Customer Management) Ongoing
+HRM (Human Resources) Planned
+SCM (Supply Chain) Planned
+Inventory Planned
+Finance / Accounting Planned
 
-Swagger UI (Interactive): http://127.0.0.1:8000/api/schema/swagger-ui/
-Redoc (Standard): http://127.0.0.1:8000/api/schema/redoc/
-Django Admin: http://127.0.0.1:8000/admin/
+🔐 8. Security & Authentication
+Token-based authentication using Djoser
+Environment-based configuration (.env)
+Separation of concerns ensures reduced risk exposure
+
+🚀 9. Deployment Strategy (Recommended)
+Suggested Setup:
+Backend → AWS EC2 / Docker
+Database → AWS RDS (PostgreSQL)
+Frontend → Vercel / Netlify
+Static files → AWS S3
+
+📈 10. Scalability Design
+Key Highlights:
+Modular apps (crm, hrm, etc.)
+Replaceable repositories (DB / external APIs)
+Independent business logic layer
+API-first architecture
+
+👉 This allows:
+
+Microservices transition (future)
+Easy scaling per module
+
+🧪 11. Testing Strategy
+Pytest-based testing
+Layer-wise testing:
+Domain tests
+Logic tests
+Repository tests
+API tests
+
+⚠️ 12. Known Limitations
+HRM, SCM modules not fully implemented
+Frontend limited to CRM module
+No CI/CD pipeline defined yet
+
+🔮 13. Future Enhancements
+Full ERP module implementation
+Multi-tenant architecture
+Role-based access control (RBAC)
+Event-driven architecture (Kafka / Celery)
+AI-driven automation (fits your current work 🔥)
+
+🧠 14. Key Engineering Decisions
+Decision Reason
+Avoid Django MVT Better scalability
+Use Pydantic Strong validation
+Repository Pattern Decoupling DB
+Factory Pattern External integrations
+
+🧾 15. Conclusion
+
+ERP_v1 is designed as a modern, scalable ERP system with:
+
+Clean architecture (DDD-inspired)
+Modular extensibility
+API-first design
+Enterprise-ready patterns
