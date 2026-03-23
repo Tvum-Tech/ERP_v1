@@ -1,171 +1,281 @@
-### 📘 ERP_v1 – Enterprise Resource Planning System
-📌 **1. Project Overview**
+Here is your **clean, properly formatted, copy-paste ready `README.md`** 👇
+(You can paste this directly into GitHub — formatting will render perfectly)
 
-ERP_v1 is a modular, scalable Enterprise Resource Planning system built using Django REST Framework and Vue.js, designed to manage multiple business domains such as CRM, HRM, Finance, and Inventory.
+---
 
-The system follows a Domain-Driven Design (DDD-inspired architecture) rather than traditional Django MVT, enabling better scalability, maintainability, and separation of concerns.
+```markdown
+# 📘 Lighting ERP System (BOQ & Configuration Engine)
 
-#### 🎯 Key Objectives
-Build a modular ERP platform
-Enable plug-and-play integrations (e.g., external CRM like HubSpot)
-Separate business logic from infrastructure
-Support scalable enterprise architecture
-🏗️ 2. System Architecture
-🔷 High-Level Architecture
-User → Frontend (Vue.js)
-     → Backend API (Django DRF)
-     → Business Logic Layer
-     → Repository Layer
-     → Database (PostgreSQL)
-🔷 Backend Architecture (DDD Inspired)
+---
 
-##### Instead of Django’s default MVT, the system is structured into:
+## 🚀 Overview
 
-Core Layers:
-Layer	Responsibility
-Domain	Core business entities & rules
-Logic	Business logic processing
-Repository	Database interaction
-Handlers (Views)	API endpoints
-Tests	Unit & integration tests
+This project is a **Django-based ERP system** designed for **Lighting Design, Configuration, and BOQ (Bill of Quantities) generation**.
 
-👉 This separation allows:
+It enables engineers and business teams to:
 
-Clean code
-Easy scaling
-Replaceable infrastructure
-🔷 Request Flow
-Request → URL Router → View (Handler)
-        → Logic Layer
-        → Repository Layer
-        → Database
-        → Response → Client
-🔷 Advanced Design Feature
-🔥 Repository Factory Pattern
-Uses use_case_type
-Dynamically switches data source (e.g., DB vs external CRM)
+- Design lighting configurations at **Project → Area → SubArea level**
+- Select products based on **technical filters**
+- Automatically determine **compatible drivers and accessories**
+- Generate **version-controlled configurations**
+- Produce **audit-safe BOQ outputs**
 
-👉 Example:
+---
 
-use_case_type="default" → DB
-use_case_type="hubspot" → External API
+## 🏗️ System Architecture
 
-✅ This enables plug-and-play integrations without changing views
+```
 
-🧩 3. Project Structure
-ERP_v1/
-│
-├── core/
-│   ├── apps/
-│   │   ├── crm/
-│   │   ├── hrm/
-│   │   ├── fintech/
-│   │   └── common/
-│   │
-│   ├── frontend/
-│   │   ├── crm/
-│   │   ├── hrm/
-│   │
-│
-├── manage.py
-├── requirements.txt
-├── .env-example
-#### 🛠️ 4. Technology Stack
-Backend
-Python
-Django
-Django REST Framework
-Pydantic (validation instead of DRF serializers)
-PostgreSQL
-Djoser (authentication)
-Swagger (API docs)
-Frontend
-Vue.js
-JavaScript
-#### ⚙️ 5. Setup & Installation
-🔷 Backend Setup
-git clone https://github.com/Tvum-Tech/ERP_v1.git
-cd ERP_v1
+Project → Area → SubArea → Configuration → Products → Drivers/Accessories → BOQ
 
-cp .env-example .env
-pip install -r requirements.txt
-python manage.py migrate
-python manage.py runserver
-🔷 Frontend Setup
-cd core/frontend/crm
-npm install
-npm run serve
-🔷 Run Tests
-pytest
-#### 📡 6. API Documentation
-Swagger UI:
-http://localhost:8000/api/v1/docs/
+```
 
-👉 APIs are auto-documented using OpenAPI/Swagger.
+---
 
-#### 🧱 7. Functional Modules (Roadmap)
-Module	Status
-CRM (Customer Management)	Ongoing
-HRM (Human Resources)	Planned
-SCM (Supply Chain)	Planned
-Inventory	Planned
-Finance / Accounting	Planned
+## 📦 Core Modules
 
-#### 🔐 8. Security & Authentication
-Token-based authentication using Djoser
-Environment-based configuration (.env)
-Separation of concerns ensures reduced risk exposure
+### 1. 🏢 Projects Module
 
-#### 🚀 9. Deployment Strategy (Recommended)
-Suggested Setup:
-Backend → AWS EC2 / Docker
-Database → AWS RDS (PostgreSQL)
-Frontend → Vercel / Netlify
-Static files → AWS S3
+Manages project hierarchy.
 
-#### 📈 10. Scalability Design
-Key Highlights:
-Modular apps (crm, hrm, etc.)
-Replaceable repositories (DB / external APIs)
-Independent business logic layer
-API-first architecture
+#### Project
+- `project_code` (auto-generated)
+- Name, metadata
 
-👉 This allows:
+#### Area
+- `area_code` (auto-generated)
+- Linked to Project
 
-Microservices transition (future)
-Easy scaling per module
-🧪 11. Testing Strategy
-Pytest-based testing
-Layer-wise testing:
-Domain tests
-Logic tests
-Repository tests
-API tests
+#### SubArea
+- `subarea_code` (auto-generated)
+- Linked to Area
 
-#### ⚠️ 12. Known Limitations
-HRM, SCM modules not fully implemented
-Frontend limited to CRM module
-No CI/CD pipeline defined yet
+---
 
-#### 🔮 13. Future Enhancements
-Full ERP module implementation
-Multi-tenant architecture
-Role-based access control (RBAC)
-Event-driven architecture (Kafka / Celery)
-AI-driven automation (fits your current work 🔥)
+### 2. 💡 Configurations Module (Core Engine)
 
-#### 🧠 14. Key Engineering Decisions
-Decision	Reason
-Avoid Django MVT	Better scalability
-Use Pydantic	Strong validation
-Repository Pattern	Decoupling DB
-Factory Pattern	External integrations
+Handles lighting configurations with **versioning**.
 
-#### 🧾 15. Conclusion
+#### LightingConfiguration
+- Project, Area, SubArea
+- Version number
+- `is_active`
+- `created_at`
 
-ERP_v1 is designed as a modern, scalable ERP system with:
+#### ConfigurationDriver
+- Linked driver + quantity
 
-Clean architecture (DDD-inspired)
-Modular extensibility
-API-first design
-Enterprise-ready patterns
+#### ConfigurationAccessory
+- Linked accessory + quantity
+
+---
+
+### 3. 📦 Masters Module (Product Intelligence)
+
+Central repository for all product-related data.
+
+#### Product
+- Mounting style
+- Beam angle
+- Lumen output
+- CCT (Kelvin)
+- Wattage
+- Make, Order Code
+- Electrical specs
+
+#### Driver
+- Max wattage
+- Voltage/current range
+- Constant type (CC/CV)
+- Dimming protocol
+- IP rating
+
+#### Accessory
+- Compatible mounting styles
+- Diameter range
+- IP compatibility
+
+---
+
+### 4. ⚙️ Compatibility Engine
+
+A **pure service layer** that determines compatibility.
+
+#### Functions
+```
+
+get_compatible_drivers(products)
+get_compatible_accessories(products)
+
+```
+
+#### Key Rules
+- Electrical compatibility (CC/CV)
+- Total wattage validation
+- Voltage/current matching
+- Mounting compatibility
+- IP rating constraints
+- Intersection logic (**must support ALL products**)
+
+---
+
+### 5. 🔄 Versioning Engine
+
+Ensures **ERP-grade immutability and audit compliance**.
+
+#### Function
+```
+
+create_configuration_version()
+
+```
+
+#### Rules
+- Every save creates a **new version**
+- Previous versions become inactive
+- No deletion allowed
+- Full traceability maintained
+
+---
+
+### 6. 📊 BOQ Module
+
+Generates Bill of Quantities from configurations.
+
+#### BOQItem
+- Product, Driver, Accessory
+- Quantity
+- Pricing
+
+#### Integrity Rules
+- Linked to configuration version
+- Immutable
+- Audit-safe
+
+---
+
+## 🌐 API Endpoints
+
+### Configuration APIs
+```
+
+POST /api/configurations/save_batch/
+POST /api/configurations/compatibility/
+GET  /api/configurations/by-area/<area_id>/
+
+```
+
+### Project Hierarchy
+```
+
+GET /api/projects/
+GET /api/areas/
+GET /api/subareas/
+
+```
+
+### Product Filtering
+```
+
+POST /api/products/filter/
+
+```
+
+---
+
+## 🧠 Configuration Workflow
+
+1. Select **Project**
+2. Select **Area**
+3. Select **SubArea**
+4. Apply filters:
+   - Mounting Style
+   - Beam Angle
+   - Lumen Output
+   - CCT
+   - Wattage
+5. Select Products
+6. Fetch:
+   - Compatible Drivers
+   - Compatible Accessories
+7. Save Configuration → **New Version Created**
+
+---
+
+## 🔐 Permissions
+
+- `IsEditorOrReadOnly` → Default protection
+- `AllowAny` → Used for compatibility endpoints (calculation APIs)
+
+---
+
+## 🧾 Code Generation Strategy
+
+All hierarchy levels use **auto-generated codes**:
+
+| Entity   | Example               |
+|----------|----------------------|
+| Project  | OFFICE-12-20260129   |
+| Area     | LOBBY-3-20260129     |
+| SubArea  | RECEPTION-7-20260129 |
+
+✔ Immutable  
+✔ Unique  
+✔ ERP-compliant  
+
+---
+
+## 🧪 Tech Stack
+
+- **Backend:** Django + Django REST Framework  
+- **Database:** SQLite (Development)  
+- **Architecture:** Service-based ERP design  
+- **API:** RESTful  
+
+---
+
+## ⚠️ Important Notes
+
+- Do NOT delete configurations → use versioning
+- Compatibility logic is **deterministic and centralized**
+- Migrations must always be applied after model changes
+- Designed for **scalability and audit compliance**
+
+---
+
+## 🚀 Future Enhancements
+
+- Approval Workflow (Draft → Approved)
+- Pricing Engine (Margin, Discount)
+- Rule Engine UI (No hardcoding)
+- Excel / PDF BOQ export
+- Role-based access control
+- Analytics & reporting dashboards
+
+---
+
+## 👨‍💻 Author
+
+Lighting ERP System – Built for scalable configuration, engineering validation, and BOQ automation.
+```
+
+---
+
+## ✅ Done
+
+You can now:
+
+* Paste this into `README.md`
+* Commit directly to GitHub
+* Use it in interviews / portfolio
+
+---
+
+If you want next, I can:
+
+* Add **architecture diagram (image-based)**
+* Create **Swagger API docs**
+* Add **setup & installation section**
+* Make this **resume-ready project explanation**
+
+Just tell me 👍
