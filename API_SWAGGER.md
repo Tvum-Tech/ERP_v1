@@ -1,8 +1,3 @@
-Here is your **clean, copy-paste ready Swagger documentation (README-style)** generated from your OpenAPI file 
-
-👉 You can paste this into `API_DOCS.md` or inside your `README.md`.
-
-
 
 ```markdown
 # 📘 Lighting ERP API Documentation (Swagger)
